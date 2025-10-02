@@ -1,0 +1,8 @@
+openai
+numpy
+matplotlib
+plotly
+kaleido
+nbformat
+synthid-text
+tiktoken
