@@ -93,7 +93,7 @@ def generate_with_probabilities(
 
     if save_output_tokens:
         timestamp = datetime.now().strftime("%Y%m%d_%H:%M")
-        filename = f"outputs/logprobs/{timestamp}.json"
+        filename = f"../outputs/logprobs/{timestamp}.json"
 
         with open(filename, "w", encoding="utf-8") as fp:
             fp.write(json.dumps(formatted_probabilities, indent=4))
@@ -158,7 +158,7 @@ def visualise_probabilities(data, x_labels, y_labels, grid_labels, interactive=T
 
         # Save and display plot as interactive HTML page
         timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-        filename = f"outputs/plots/probs_{timestamp}.html"
+        filename = f"../outputs/plots/probs_{timestamp}.html"
         fig.write_html(filename)
 
         fig.show(renderer="browser")
@@ -204,7 +204,7 @@ def visualise_probabilities(data, x_labels, y_labels, grid_labels, interactive=T
 
         # Save plot as static PNG image
         timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-        filename = f"outputs/plots/probs_{timestamp}.png"
+        filename = f"../outputs/plots/probs_{timestamp}.png"
         plt.savefig(filename)
 
 
@@ -274,5 +274,5 @@ if __name__ == "__main__":
         user_prompt=user_prompt, save_model_distribution=True
     )
 
-    # pregenerated_tokens_file = "outputs/logprobs/test_20251002.json"
+    # pregenerated_tokens_file = "../outputs/logprobs/test_20251002.json"
     # output_distribution_visualiser(restore_from_file=pregenerated_tokens_file)
