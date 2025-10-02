@@ -2,7 +2,6 @@ openai
 numpy
 matplotlib
 plotly
-kaleido
-nbformat
-synthid-text
 tiktoken
+torch
+transformers>=4.46.0
