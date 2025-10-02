@@ -8,11 +8,15 @@ from typing import List, Optional
 
 import numpy as np
 import tiktoken
+import torch
 from huggingface_hub import login
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    BayesianDetectorModel,
+    SynthIDTextWatermarkDetector,
     SynthIDTextWatermarkingConfig,
+    SynthIDTextWatermarkLogitsProcessor,
 )
 
 # --------------------------------------------------------------------------- #
@@ -51,11 +55,20 @@ def format_model_output(
 # --------------------------------------------------------------------------- #
 
 
-def watermark_synthid(model_name: str, prompt: str, watermark_keys: List[int]):
+def watermark_synthid(
+    model_name: str, prompt: str, watermark_keys: List[int], device: str = "cpu"
+):
+    """
+    Generate a text response to the input 'prompt' using the HF model 'model_name'
+    that is watermarked using Google's SynthID.
+    """
+
     # Instantiate generator model and tokenizer
     print(f" << * >> Instantiating model: '{model_name}'")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
+
     model = AutoModelForCausalLM.from_pretrained(model_name)
+    # model = model.to(device)
 
     # Create SynthID watermarking config
     # Specify word-seq length: The lower the values are, the more likely the watermarks are to survive heavy editing, but the harder they are to detect  # noqa
@@ -71,18 +84,55 @@ def watermark_synthid(model_name: str, prompt: str, watermark_keys: List[int]):
     print(f" << * >> Input prompt: '{prompt}'")
 
     prompt_toks = tokenizer([prompt], return_tensors="pt")
+    # prompt_toks = prompt_toks.to(device)
     print(f" << * >> Encoded prompt: {prompt_toks}")
 
     # Generate output that includes watermark
     print(" << * >> Generating response")
     response = model.generate(
-        **prompt_toks, watermarking_config=watermarking_config, do_sample=True
+        **prompt_toks,
+        watermarking_config=watermarking_config,
+        do_sample=True,
     )
 
-    watermarked_text = tokenizer.batch_decode(response, skip_special_tokens=True)
+    watermarked_text = tokenizer.batch_decode(response, skip_special_tokens=True)[0]
     print(f" << * >> Watermarked text output: '{watermarked_text}'")
 
     return watermarked_text
+
+
+def detect_synthid(input_text: str, device: str = "cpu") -> float:
+    """
+    Check whether a given text 'input_text' is likely to have been watermarked
+    using Google's SynthID.
+
+    Note: This uses a DUMMY detector model for demo purposes only.
+    A custom detector should be trained for any use in production.
+    https://github.com/huggingface/transformers/blob/v4.46.0/examples/research_projects/synthid_text/detector_training.py
+    """
+    # Load DUMMY detector model
+    detector_model_name = "joaogante/dummy_synthid_detector"
+    bayesian_detector_model = BayesianDetectorModel.from_pretrained(detector_model_name)
+    logits_processor = SynthIDTextWatermarkLogitsProcessor(
+        **bayesian_detector_model.config.watermarking_config, device="cpu"
+    )
+    tokenizer = AutoTokenizer.from_pretrained(bayesian_detector_model.config.model_name)
+
+    detector = SynthIDTextWatermarkDetector(
+        bayesian_detector_model, logits_processor, tokenizer
+    )
+    print(" << * >> Instantiated detector model")
+
+    # Pass input text to the detector model
+    text_toks = tokenizer([input_text], return_tensors="pt")
+    print(f" << * >> Input text: '{input_text}'")
+    print(f" << * >> Encoded text: {text_toks}")
+
+    watermark_likelihood = detector(text_toks.input_ids)
+    watermark_likelihood = watermark_likelihood[0][0]
+    print(f" << * >> Likelihood of watermark: {watermark_likelihood:.4f}")
+
+    return watermark_likelihood
 
 
 if __name__ == "__main__":
@@ -91,24 +141,32 @@ if __name__ == "__main__":
     # pregenerated_tokens_file = "outputs/logprobs/test_20251002.json"
     # format_model_output(model_name, pregenerated_tokens_file)
 
-    # Load credentials: Hugging Face and SynthID watermarking key
-    credentials_filepath = "credentials.json"
-    with open(credentials_filepath, "r", encoding="utf-8") as fp:
-        credentials = json.load(fp)
+    watermark = True
+    detect = True
+    synthetic_text = "This is a test input"
 
-    # Authenticate with Hugging Face for model access
-    hf_access_token = credentials["hf_access_token"]
-    login(hf_access_token)
-    print(" << * >> Successfully authenticated with Hugging Face")
+    if watermark:
+        # Load credentials: Hugging Face and SynthID watermarking key
+        credentials_filepath = "credentials.json"
+        with open(credentials_filepath, "r", encoding="utf-8") as fp:
+            credentials = json.load(fp)
 
-    # Specify generator model
-    model_name = "google/gemma-2b"
+        # Authenticate with Hugging Face for model access
+        hf_access_token = credentials["hf_access_token"]
+        login(hf_access_token)
+        print(" << * >> Successfully authenticated with Hugging Face")
 
-    # Specify waterkarking keys: a list of 20-30 random integers that serve as your private digital signature  # noqa
-    watermark_keys = credentials["synthid_watermarking_keys"]
+        # Specify generator model and input prompt
+        model_name = "google/gemma-2b"
+        prompt = "What is the capital of France?"
 
-    # Run text watermarking process
-    prompt = "What is the capital of France?"
+        # Specify waterkarking keys: a list of 20-30 random integers that serve as your private digital signature  # noqa
+        watermark_keys = credentials["synthid_watermarking_keys"]
 
-    print(" << * >> Running watermarking process")
-    watermark_synthid(model_name, prompt, watermark_keys)
+        # Run text generation and watermarking process
+        print(" << * >> Running watermarking process")
+        synthetic_text = watermark_synthid(model_name, prompt, watermark_keys)
+
+    # Run watermark detection process
+    if detect:
+        watermarked = detect_synthid(synthetic_text)
