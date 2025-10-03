@@ -92,7 +92,7 @@ def generate_raw_samples(num_negatives, neg_batch_size, tokenizer, device):
     tokenized_uwm_outputs = []
     padded_length = 1000  # Pad to this length (on the right) for batching
 
-    for i, batch in tqdm(enumerate(ds)):
+    for i, batch in tqdm(enumerate(ds), desc="Extracting raw samples"):
         responses = [val.decode() for val in batch["text"].numpy()]
         inputs = tokenizer(
             responses,
@@ -137,7 +137,7 @@ def generate_watermarked_samples(
 
     wm_outputs = []
 
-    for batch_id in tqdm(range(num_pos_batches)):
+    for batch_id in tqdm(range(num_pos_batches), desc="Generating watermarked samples"):
         prompts = eli5_prompts["train"]["title"][
             batch_id * pos_batch_size : (batch_id + 1) * pos_batch_size
         ]
@@ -581,6 +581,11 @@ if __name__ == "__main__":
 
     # -----------------------------------------------------------------------------
     # Load training dataset
+    print(" << * >> Creating training dataset: unwatermarked samples (2/2)")
+    tokenized_uwm_outputs = generate_raw_samples(
+        num_negatives, NEG_BATCH_SIZE, tokenizer, DEVICE
+    )
+
     print(" << * >> Creating training dataset: watermarked samples (1/2)")
     tokenized_wm_outputs = generate_watermarked_samples(
         model,
@@ -593,11 +598,6 @@ if __name__ == "__main__":
         top_k,
         top_p,
         DEVICE,
-    )
-
-    print(" << * >> Creating training dataset: unwatermarked samples (2/2)")
-    tokenized_uwm_outputs = generate_raw_samples(
-        num_negatives, NEG_BATCH_SIZE, tokenizer, DEVICE
     )
 
     # -----------------------------------------------------------------------------
