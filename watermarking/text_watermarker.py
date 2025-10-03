@@ -31,7 +31,6 @@ def load_model(
 
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        device_map="auto",
         torch_dtype=torch.bfloat16,
     )
     model = model.to(device)
@@ -48,9 +47,7 @@ def watermark_synthid(model_name: str, prompt: str, watermark_keys: List[int]):
 
     # Instantiate generator model and tokenizer
     print(f" << * >> Instantiating model: '{model_name}'")
-    device = (
-        torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-    )
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model, tokenizer = load_model(model_name, device)
 
     # Create SynthID watermarking config
@@ -66,7 +63,7 @@ def watermark_synthid(model_name: str, prompt: str, watermark_keys: List[int]):
     # Format model inputs
     print(f" << * >> Input prompt: '{prompt}'")
 
-    prompt_toks = tokenizer([prompt], return_tensors="pt")
+    prompt_toks = tokenizer(prompt, return_tensors="pt")
     prompt_toks = prompt_toks.to(device)
     print(f" << * >> Encoded prompt: {prompt_toks}")
 
@@ -76,7 +73,8 @@ def watermark_synthid(model_name: str, prompt: str, watermark_keys: List[int]):
     # Generate output that includes watermark
     print(" << * >> Generating response")
     response = model.generate(
-        **prompt_toks,
+        input_ids=prompt_toks["input_ids"],
+        attention_mask=prompt_toks["attention_mask"],
         do_sample=True,
         temperature=temperature,
         max_new_tokens=max_new_tokens,
@@ -113,13 +111,13 @@ def detect_synthid(input_text: str) -> float:
     print(" << * >> Instantiated detector model")
 
     # Pass input text to the detector model
-    text_toks = tokenizer([input_text], return_tensors="pt")
+    text_toks = tokenizer(input_text, return_tensors="pt")
     print(f" << * >> Input text: '{input_text}'")
     print(f" << * >> Encoded text: {text_toks}")
 
     watermark_likelihood = detector(text_toks.input_ids)
     watermark_likelihood = watermark_likelihood[0][0]
-    print(f" << * >> Likelihood of watermark: {watermark_likelihood:.4f}")
+    print(f" << * >> Likelihood of watermark: {watermark_likelihood * 100:.2f}%")
 
     return watermark_likelihood
 
