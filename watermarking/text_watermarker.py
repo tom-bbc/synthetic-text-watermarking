@@ -3,13 +3,9 @@
 # --------------------------------------------------------------------------- #
 
 import json
-import os
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
-import numpy as np
-import tiktoken
 import torch
-from huggingface_hub import login
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -18,37 +14,6 @@ from transformers import (
     SynthIDTextWatermarkingConfig,
     SynthIDTextWatermarkLogitsProcessor,
 )
-
-# --------------------------------------------------------------------------- #
-#                  ENCODER FOR PRE-GENERATED MODEL OUTPUTS                    #
-# --------------------------------------------------------------------------- #
-
-
-def format_model_output(
-    model_name: str,
-    restore_from_file: Optional[str] = None,
-) -> Optional[str]:
-    # Load pre-generated model output tokens
-    if isinstance(restore_from_file, str) and os.path.isfile(restore_from_file):
-        with open(restore_from_file, "r", encoding="utf-8") as f:
-            model_output = json.load(f)
-
-        print(f" << * >> Restoring LLM logprobs from file: '{restore_from_file}'")
-
-    else:
-        print(" -- * -- Error: no valid 'restore_from_file' file provided.")
-        return
-
-    # Instantiate token encoder for given model
-    encoder = tiktoken.encoding_for_model(model_name)
-
-    # Encode all tokens from the pre-generated model output
-    generated_tokens = [token["token"] for token in model_output]
-    generated_token_ids = [encoder.encode(token) for token in generated_tokens]
-    generated_token_ids = np.array(generated_token_ids).flatten()
-
-    print(f" << * >> Encoded token IDs: {generated_token_ids}")
-
 
 # --------------------------------------------------------------------------- #
 #                  SYNTHID TEXT WATERMARKING & DETECTION                      #
@@ -160,32 +125,21 @@ def detect_synthid(input_text: str) -> float:
 
 
 if __name__ == "__main__":
-    # Legacy
-    # model_name = "gpt-4o"
-    # pregenerated_tokens_file = "outputs/logprobs/test_20251002.json"
-    # format_model_output(model_name, pregenerated_tokens_file)
-
     watermark = True
     detect = True
     synthetic_text = "This is a test input"
 
     if watermark:
-        # Load credentials: Hugging Face and SynthID watermarking key
+        # Load waterkarking keys: a list of 20-30 random integers that serve as your private digital signature  # noqa
         credentials_filepath = "credentials.json"
         with open(credentials_filepath, "r", encoding="utf-8") as fp:
             credentials = json.load(fp)
 
-        # Authenticate with Hugging Face for model access
-        hf_access_token = credentials["hf_access_token"]
-        login(hf_access_token)
-        print(" << * >> Successfully authenticated with Hugging Face")
+        watermark_keys = credentials["synthid_watermarking_keys"]
 
         # Specify generator model and input prompt
         model_name = "google/gemma-2-2b-it"
         prompt = "Please re-write the following article in the style of a BBC News Article. \n\nInput Article:\nA report revealed that 253 potential victims of slavery were reported in Hampshire and the Isle of Wight, of which one in four were children. Modern slavery, which includes human trafficking, is the illegal exploitation of people for personal or commercial gain. It can take different forms of slavery, such as domestic or labour exploitation, organ harvesting, EU Status exploitation, and financial, sexual and criminal exploitation. Each year, Hampshire and Isle of Wight Fire and Rescue Authority (HIWFRA), combined by all four authorities, the three unitary councils, and the county council, spends around £99m on making \"life safer\" in the county and preventing slavery and human trafficking. However, a recent report of the HIWFRA has revealed that by June 2023, there were 253 potential victims identified of modern slavery in Hampshire and the Isle of Wight. Of them, one in four were children. According to the Government's UK Annual Report on Modern Slavery, 10,613 potential victims were referred to the National Referral Mechanism in the year ended September 2021. In case any member of the Authority or any of its staff suspects slavery or human trafficking activity either within the community or the organisation, then the concerns will be reported through the Service's Safeguarding Reporting Procedure.\n\nBBC Article:\n"  # noqa
-
-        # Specify waterkarking keys: a list of 20-30 random integers that serve as your private digital signature  # noqa
-        watermark_keys = credentials["synthid_watermarking_keys"]
 
         # Run text generation and watermarking process
         print(" << * >> Running watermarking process")
