@@ -5,3 +5,4 @@ plotly
 tiktoken
 torch
 transformers>=4.46.0
+accelerate
