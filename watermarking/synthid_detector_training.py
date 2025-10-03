@@ -25,19 +25,22 @@
 import argparse
 import dataclasses
 import enum
+import gc
 import json
 import os
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import datasets
 import numpy as np
+import tensorflow as tf
+import tensorflow_datasets as tfds
 import torch
 from synthid_training_utils import (
-    get_tokenized_uwm_outputs,
-    get_tokenized_wm_outputs,
     process_raw_model_outputs,
     update_fn_if_fpr_tpr,
     upload_model_to_hf,
 )
+from tqdm import tqdm
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -75,12 +78,91 @@ class TrainingArguments:
 # --------------------------------------------------------------------------- #
 
 
-def generate_raw_samples():
-    pass
+def generate_raw_samples(num_negatives, neg_batch_size, tokenizer, device):
+    dataset, info = tfds.load("wikipedia/20230601.en", split="train", with_info=True)
+    dataset = dataset.take(num_negatives)
+
+    # Convert the dataset to a DataFrame
+    df = tfds.as_dataframe(dataset, info)
+    ds = tf.data.Dataset.from_tensor_slices(dict(df))
+    tf.random.set_seed(0)
+    ds = ds.shuffle(buffer_size=10_000)
+    ds = ds.batch(batch_size=neg_batch_size)
+
+    tokenized_uwm_outputs = []
+    # Pad to this length (on the right) for batching.
+    padded_length = 1000
+    for i, batch in tqdm(enumerate(ds)):
+        responses = [val.decode() for val in batch["text"].numpy()]
+        inputs = tokenizer(
+            responses,
+            return_tensors="pt",
+            padding=True,
+        ).to(device)
+        inputs = inputs["input_ids"].cpu().numpy()
+        if inputs.shape[1] >= padded_length:
+            inputs = inputs[:, :padded_length]
+        else:
+            inputs = np.concatenate(
+                [
+                    inputs,
+                    np.ones((neg_batch_size, padded_length - inputs.shape[1]))
+                    * tokenizer.eos_token_id,
+                ],
+                axis=1,
+            )
+        tokenized_uwm_outputs.append(inputs)
+        if len(tokenized_uwm_outputs) * neg_batch_size > num_negatives:
+            break
+    return tokenized_uwm_outputs
 
 
-def generate_watermarked_samples():
-    pass
+def generate_watermarked_samples(
+    model,
+    tokenizer,
+    watermark_config,
+    num_pos_batches,
+    pos_batch_size,
+    temperature,
+    max_output_len,
+    top_k,
+    top_p,
+    device,
+):
+    eli5_prompts = datasets.load_dataset("Pavithree/eli5")
+
+    wm_outputs = []
+
+    for batch_id in tqdm(range(num_pos_batches)):
+        prompts = eli5_prompts["train"]["title"][
+            batch_id * pos_batch_size : (batch_id + 1) * pos_batch_size
+        ]
+        prompts = [prompt.strip('"') for prompt in prompts]
+        inputs = tokenizer(
+            prompts,
+            return_tensors="pt",
+            padding=True,
+        ).to(device)
+        _, inputs_len = inputs["input_ids"].shape
+
+        outputs = model.generate(
+            **inputs,
+            watermarking_config=watermark_config,
+            do_sample=True,
+            max_length=inputs_len + max_output_len,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+        )
+
+        wm_outputs.append(outputs[:, inputs_len:].cpu().detach())
+
+        del outputs, inputs, prompts
+        gc.collect()
+
+    gc.collect()
+    torch.cuda.empty_cache()
+    return wm_outputs
 
 
 # --------------------------------------------------------------------------- #
@@ -481,7 +563,7 @@ if __name__ == "__main__":
         }
 
     watermark_config = SynthIDTextWatermarkingConfig(**WATERMARKING_CONFIG)
-    print(f" << * >> Loaded watermarking config: {watermark_config}")
+    print(f" << * >> Loaded watermarking config: {WATERMARKING_CONFIG}")
 
     # -----------------------------------------------------------------------------
     # Load generator model and tokenizer
@@ -496,7 +578,7 @@ if __name__ == "__main__":
     # -----------------------------------------------------------------------------
     # Load training dataset
     print(" << * >> Loading training dataset: 1/2")
-    tokenized_wm_outputs = get_tokenized_wm_outputs(
+    tokenized_wm_outputs = generate_watermarked_samples(
         model,
         tokenizer,
         watermark_config,
@@ -510,7 +592,7 @@ if __name__ == "__main__":
     )
 
     print(" << * >> Loading training dataset: 2/2")
-    tokenized_uwm_outputs = get_tokenized_uwm_outputs(
+    tokenized_uwm_outputs = generate_raw_samples(
         num_negatives, NEG_BATCH_SIZE, tokenizer, DEVICE
     )
 
