@@ -79,7 +79,12 @@ class TrainingArguments:
 
 
 def generate_raw_samples(num_negatives, neg_batch_size, tokenizer, device):
-    dataset, info = tfds.load("wikipedia/20230601.en", split="train", with_info=True)
+    # gsutil cp -r gs://tfds-data/datasets/wikipedia/20230601.en/ ../dataset/wikipedia/
+    download_dir = "../dataset/"
+    dataset_name = "wikipedia/20230601.en"
+    dataset, info = tfds.load(
+        dataset_name, split="train", with_info=True, data_dir=download_dir
+    )
     dataset = dataset.take(num_negatives)
 
     # Convert the dataset to a DataFrame
@@ -133,7 +138,9 @@ def generate_watermarked_samples(
     top_p,
     device,
 ):
-    eli5_prompts = datasets.load_dataset("Pavithree/eli5")
+    download_dir = "../dataset/"
+    dataset_name = "Pavithree/eli5"
+    eli5_prompts = datasets.load_dataset(dataset_name, data_dir=download_dir)
 
     wm_outputs = []
 
@@ -524,7 +531,7 @@ if __name__ == "__main__":
     # Load watermarking config
     # Check documentation in the paper to understand the impact of these parameters.
     if watermarking_config is not None and os.path.isfile(watermarking_config):
-        with open(watermarking_config, "r", encoding="urf-8") as fp:
+        with open(watermarking_config, "r", encoding="utf-8") as fp:
             WATERMARKING_CONFIG = json.load(fp)
     else:
         WATERMARKING_CONFIG = {
