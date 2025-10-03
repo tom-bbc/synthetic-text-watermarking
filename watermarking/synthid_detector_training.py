@@ -426,6 +426,7 @@ if __name__ == "__main__":
     DEVICE = (
         torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
     )
+    print(f" << * >> Running training on device: {DEVICE}")
 
     if DEVICE.type not in ("cuda", "tpu"):
         raise ValueError(
@@ -480,6 +481,7 @@ if __name__ == "__main__":
         }
 
     watermark_config = SynthIDTextWatermarkingConfig(**WATERMARKING_CONFIG)
+    print(f" << * >> Loaded watermarking config: {watermark_config}")
 
     # -----------------------------------------------------------------------------
     # Load generator model and tokenizer
@@ -493,6 +495,7 @@ if __name__ == "__main__":
 
     # -----------------------------------------------------------------------------
     # Load training dataset
+    print(" << * >> Loading training dataset: 1/2")
     tokenized_wm_outputs = get_tokenized_wm_outputs(
         model,
         tokenizer,
@@ -505,12 +508,15 @@ if __name__ == "__main__":
         top_p,
         DEVICE,
     )
+
+    print(" << * >> Loading training dataset: 2/2")
     tokenized_uwm_outputs = get_tokenized_uwm_outputs(
         num_negatives, NEG_BATCH_SIZE, tokenizer, DEVICE
     )
 
     # -----------------------------------------------------------------------------
     # Run training process
+    print(" << * >> Starting training process")
     best_detector, lowest_loss = train_synthid_detector(
         tokenized_wm_outputs=tokenized_wm_outputs,
         tokenized_uwm_outputs=tokenized_uwm_outputs,
@@ -534,6 +540,8 @@ if __name__ == "__main__":
         print("Detector training process failed.")
         exit(1)
 
+    print(" << * >> Training complete")
+
     # -----------------------------------------------------------------------------
     # Save trained model to Hugging Face
     best_detector.config.set_detector_information(
@@ -541,4 +549,5 @@ if __name__ == "__main__":
     )
 
     if save_model_to_hf_hub:
+        print(" << * >> Saving model to Hugging Face")
         upload_model_to_hf(best_detector, repo_name)

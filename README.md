@@ -52,7 +52,7 @@ For example:
 Training can be ran using the following script:
 
 ```
-python detector_training.py --model_name=google/gemma-7b-it --watermarking_config=watermarking_config.json
+python synthid_detector_training.py --model_name=google/gemma-7b-it --watermarking_config=watermarking_config.json
 ```
 
 Check the script for more parameters are are tunable and check out paper at link https://www.nature.com/articles/s41586-024-08025-4 for more information on these parameters.
