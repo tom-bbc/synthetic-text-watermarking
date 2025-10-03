@@ -90,8 +90,8 @@ def generate_raw_samples(num_negatives, neg_batch_size, tokenizer, device):
     ds = ds.batch(batch_size=neg_batch_size)
 
     tokenized_uwm_outputs = []
-    # Pad to this length (on the right) for batching.
-    padded_length = 1000
+    padded_length = 1000  # Pad to this length (on the right) for batching
+
     for i, batch in tqdm(enumerate(ds)):
         responses = [val.decode() for val in batch["text"].numpy()]
         inputs = tokenizer(
@@ -100,6 +100,7 @@ def generate_raw_samples(num_negatives, neg_batch_size, tokenizer, device):
             padding=True,
         ).to(device)
         inputs = inputs["input_ids"].cpu().numpy()
+
         if inputs.shape[1] >= padded_length:
             inputs = inputs[:, :padded_length]
         else:
@@ -111,9 +112,12 @@ def generate_raw_samples(num_negatives, neg_batch_size, tokenizer, device):
                 ],
                 axis=1,
             )
+
         tokenized_uwm_outputs.append(inputs)
+
         if len(tokenized_uwm_outputs) * neg_batch_size > num_negatives:
             break
+
     return tokenized_uwm_outputs
 
 
@@ -577,7 +581,7 @@ if __name__ == "__main__":
 
     # -----------------------------------------------------------------------------
     # Load training dataset
-    print(" << * >> Loading training dataset: 1/2")
+    print(" << * >> Creating training dataset: watermarked samples (1/2)")
     tokenized_wm_outputs = generate_watermarked_samples(
         model,
         tokenizer,
@@ -591,7 +595,7 @@ if __name__ == "__main__":
         DEVICE,
     )
 
-    print(" << * >> Loading training dataset: 2/2")
+    print(" << * >> Creating training dataset: unwatermarked samples (2/2)")
     tokenized_uwm_outputs = generate_raw_samples(
         num_negatives, NEG_BATCH_SIZE, tokenizer, DEVICE
     )
