@@ -3,6 +3,10 @@ numpy
 matplotlib
 plotly
 tiktoken
-torch
 transformers>=4.46.0
 accelerate
+tensorflow-datasets>=4.9.3
+torch >= 1.3
+datasets
+scikit-learn
+tensorflow

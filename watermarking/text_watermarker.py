@@ -2,7 +2,9 @@
 #                                  IMPORTS                                    #
 # --------------------------------------------------------------------------- #
 
+import argparse
 import json
+import os
 from typing import List, Tuple
 
 import torch
@@ -123,26 +125,61 @@ def detect_synthid(input_text: str) -> float:
 
 
 if __name__ == "__main__":
-    watermark = True
-    detect = True
-    synthetic_text = "This is a test input"
+    # -----------------------------------------------------------------------------
+    # Load arguments from command line
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--watermark",
+        action="store_true",
+        help="Run model generation with watermarking of generated text.",
+    )
+    parser.add_argument(
+        "--detect",
+        action="store_true",
+        help="Run watermark detection on an input text.",
+    )
+    parser.add_argument(
+        "--input_text",
+        type=str,
+        default="This is a test input",
+        help=("Input text to pass to generator or detector model."),
+    )
+    parser.add_argument(
+        "--watermarking_config",
+        type=str,
+        default=None,
+        help=("Path to JSON file defining watermarking config."),
+    )
 
-    if watermark:
+    args = parser.parse_args()
+    watermarking_config = args.watermarking_config
+    watermark = args.watermark
+    detect = args.detect
+    input_text = args.input_text
+
+    # -----------------------------------------------------------------------------
+    # Run model generation with watermarking of generated text
+    if watermark and os.path.isfile(watermarking_config):
         # Load waterkarking keys: a list of 20-30 random integers that serve as your private digital signature  # noqa
-        credentials_filepath = "credentials.json"
-        with open(credentials_filepath, "r", encoding="utf-8") as fp:
-            credentials = json.load(fp)
+        watermarking_config = "credentials.json"
+        with open(watermarking_config, "r", encoding="utf-8") as fp:
+            config = json.load(fp)
 
-        watermark_keys = credentials["synthid_watermarking_keys"]
+        watermark_keys = config["keys"]
 
         # Specify generator model and input prompt
         model_name = "google/gemma-2-2b-it"
+        prompt = input_text
+
         prompt = "Please re-write the following article in the style of a BBC News Article. \n\nInput Article:\nA report revealed that 253 potential victims of slavery were reported in Hampshire and the Isle of Wight, of which one in four were children. Modern slavery, which includes human trafficking, is the illegal exploitation of people for personal or commercial gain. It can take different forms of slavery, such as domestic or labour exploitation, organ harvesting, EU Status exploitation, and financial, sexual and criminal exploitation. Each year, Hampshire and Isle of Wight Fire and Rescue Authority (HIWFRA), combined by all four authorities, the three unitary councils, and the county council, spends around £99m on making \"life safer\" in the county and preventing slavery and human trafficking. However, a recent report of the HIWFRA has revealed that by June 2023, there were 253 potential victims identified of modern slavery in Hampshire and the Isle of Wight. Of them, one in four were children. According to the Government's UK Annual Report on Modern Slavery, 10,613 potential victims were referred to the National Referral Mechanism in the year ended September 2021. In case any member of the Authority or any of its staff suspects slavery or human trafficking activity either within the community or the organisation, then the concerns will be reported through the Service's Safeguarding Reporting Procedure.\n\nBBC Article:\n"  # noqa
 
         # Run text generation and watermarking process
         print(" << * >> Running watermarking process")
         synthetic_text = watermark_synthid(model_name, prompt, watermark_keys)
+    else:
+        synthetic_text = input_text
 
-    # Run watermark detection process
+    # -----------------------------------------------------------------------------
+    # Run watermark detection on an input text
     if detect:
         watermarked = detect_synthid(synthetic_text)
