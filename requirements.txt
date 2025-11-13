@@ -11,3 +11,4 @@ datasets
 scikit-learn
 tensorflow
 tqdm
+encypher-ai
