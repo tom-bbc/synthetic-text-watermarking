@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "synthetic-text-watermarking"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+authors = [
+    "Tom Potter <tom.potter@bbc.co.uk>",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<=3.11"
+matplotlib = "^3.10.6"
+tqdm = "^4.67.1"
+openai = "^2.1.0"
+scikit-learn = "^1.7.2"
+torch = "^2.8.0"
+tensorflow = "^2.20.0"
+transformers = ">=4.46.0"
+accelerate = "^1.10.1"
+datasets = "^4.1.1"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.poetry.scripts]
+start = "synthetic_text_watermarking.main:start"

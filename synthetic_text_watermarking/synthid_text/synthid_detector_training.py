@@ -588,12 +588,12 @@ if __name__ == "__main__":
 
     # -----------------------------------------------------------------------------
     # Load training dataset
-    print(" << * >> Creating training dataset: unwatermarked samples (2/2)")
+    print(" << * >> Creating training dataset: unwatermarked samples (1/2)")
     tokenized_uwm_outputs = generate_raw_samples(
         num_negatives, NEG_BATCH_SIZE, tokenizer, DEVICE
     )
 
-    print(" << * >> Creating training dataset: watermarked samples (1/2)")
+    print(" << * >> Creating training dataset: watermarked samples (2/2)")
     tokenized_wm_outputs = generate_watermarked_samples(
         model,
         tokenizer,
