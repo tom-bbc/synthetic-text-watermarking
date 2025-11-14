@@ -1,52 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
+{# "index.html.js" populates the /verify route #}
+{% extends "base.html.j2" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-
-    <title>
-        C2PA Text | BBC R&D
-    </title>
-
-    {# Packages #}
-    <script defer src="https://unpkg.com/pretty-json-custom-element/index.js"></script>
-
-    {# Favicon #}
-    <link rel="icon" href="{{ url_for('static', filename='images/rd-logo-favicon.jpeg' ) }}" type="image/x-icon">
-
-	{# CSS #}
-	<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css' ) }}" />
-
-</head>
-
-<body>
-    {# Content #}
+{% block page_content %}
     <h1>
-        C2PA Text | BBC R&D
+        Home
     </h1>
 
-    <h2>
-        Verify
-    </h2>
+    <p>
+        The EncypherAI SDK provides a robust, C2PA-compliant solution for embedding
+        provenance and authenticity metadata directly into plain text. This
+        self-contained example demonstrates the end-to-end workflow: creating a
+        manifest, embedding it, and verifying it.
+    </p>
 
-    <form method="POST" action="/verify">
-        <label for="text-input"><b>Enter text to verify:</b></label><br>
-        <textarea id="text-input" name="text" rows="4" required></textarea><br>
-        <button type="submit">Submit</button>
+    <form method="post" action="{{ url_for('verify') }}">
+        <button type="submit">Verify a candidate text</button>
     </form>
 
-    <br><br>
-    {% if text %}
-        <p> <b>Input text:</b> {{ text }} </p>
-        <p> <b>Verification result:</b> {{ result }} </p>
-
-		{% if payload %}
-			<p> <b>Extracted manifest:</b> <pretty-json> {{ payload }} </pretty-json> </p>
-		{% endif %}
-	{% endif %}
-
-</body>
-
-</html>
+    <form method="post" action="{{ url_for('sign') }}">
+        <button type="submit">Sign an input text</button>
+    </form>
+{% endblock %}

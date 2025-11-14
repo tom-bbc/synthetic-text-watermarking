@@ -5,6 +5,7 @@
 import json
 import logging
 import os
+import time
 from pathlib import Path
 
 import flask
@@ -32,7 +33,7 @@ logging.basicConfig(level=logging.INFO)
 # -----------------------------------------------------------------
 
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def index() -> str:
     contents = flask.render_template(
         "index.html.j2", text=None, result=None, payload=None
@@ -40,28 +41,75 @@ def index() -> str:
     return contents
 
 
-@app.route("/verify", methods=["POST"])
+@app.route("/verify", methods=["GET", "POST"])
 def verify() -> str:
-    public_key_file = app.config["public_key_file"]
-    private_key_file = app.config["private_key_file"]
+    candidate_text = None
+    is_valid = None
+    payload = None
 
-    c2pa_processor = C2PAText(
-        public_key_file=public_key_file,
-        private_key_file=private_key_file,
-    )
+    if flask.request.method == "POST":
+        candidate_text = flask.request.form.get("text", None)
 
-    text = flask.request.form.get("text", "")
-    is_valid, signer, payload = c2pa_processor.verify(text)
+        if candidate_text is not None:
+            public_key_file = app.config["public_key_file"]
+            private_key_file = app.config["private_key_file"]
 
-    logger.info(f"Input text: {text}")
-    logger.info(f"Result: {is_valid}")
+            c2pa_processor = C2PAText(
+                public_key_file=public_key_file,
+                private_key_file=private_key_file,
+            )
 
-    if payload is not None:
-        payload = json.dumps(payload, indent=4)
+            is_valid, signer, payload = c2pa_processor.verify(candidate_text)
+
+            logger.info(f"Input text: {candidate_text}")
+            logger.info(f"Result: {is_valid}")
+
+            if payload is not None:
+                payload = json.dumps(payload, indent=4)
 
     contents = flask.render_template(
-        "index.html.j2", text=text, result=is_valid, payload=payload
+        "verify.html.j2", text=candidate_text, result=is_valid, payload=payload
     )
+
+    return contents
+
+
+@app.route("/sign", methods=["GET", "POST"])
+def sign() -> str:
+    signed_text = None
+
+    if flask.request.method == "POST":
+        input_text = flask.request.form.get("text", None)
+
+        if input_text is not None:
+            public_key_file = app.config["public_key_file"]
+            private_key_file = app.config["private_key_file"]
+
+            c2pa_processor = C2PAText(
+                public_key_file=public_key_file,
+                private_key_file=private_key_file,
+            )
+
+            c2pa_mainfest = {
+                "metadata_format": "cbor_manifest",  # Use CBOR or jumbf manifest format
+                "timestamp": int(time.time()),
+                "claim_generator": "EncypherAI README Example v2.3",
+                "actions": [
+                    {
+                        "action": "c2pa.created",
+                        "when": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                        "description": "Text was created by an AI model.",
+                    }
+                ],
+                "ai_info": {
+                    "model_id": "gpt-4o-2024-05-13",
+                    "prompt": "Write a short, important statement.",
+                },
+            }
+
+            signed_text = c2pa_processor.sign(input_text, c2pa_mainfest)
+
+    contents = flask.render_template("sign.html.j2", text=signed_text)
 
     return contents
 
@@ -72,7 +120,7 @@ def verify() -> str:
 
 
 def main() -> None:
-    app.run(host="127.0.0.1", port=4040)
+    app.run(host="127.0.0.1", port=4040, debug=True)
 
 
 if __name__ == "__main__":
