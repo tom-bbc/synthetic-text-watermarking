@@ -9,7 +9,7 @@ from pathlib import Path
 
 import flask
 
-from synthetic_text_watermarking.c2pa_text.encipher_ai import C2PAText
+from synthetic_text_watermarking.c2pa_text.c2pa_text import C2PAText
 
 # -----------------------------------------------------------------
 # Webapp Setup
@@ -21,6 +21,8 @@ static_dir = os.path.join(script_dir, "static")
 app = flask.Flask(__name__, static_folder=static_dir)
 
 app.config["static_dir"] = static_dir
+app.config["public_key_file"] = "/Users/tompo/setup-data/C2PATextPublicKey.pem"
+app.config["private_key_file"] = "/Users/tompo/setup-data/C2PATextPrivateKey.pem"
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -32,24 +34,35 @@ logging.basicConfig(level=logging.INFO)
 
 @app.route("/")
 def index() -> str:
-    public_key_file = "/Users/tompo/setup-data/C2PATextPublicKey.pem"
-    private_key_file = "/Users/tompo/setup-data/C2PATextPrivateKey.pem"
+    contents = flask.render_template(
+        "index.html.j2", text=None, result=None, payload=None
+    )
+    return contents
+
+
+@app.route("/verify", methods=["POST"])
+def verify() -> str:
+    public_key_file = app.config["public_key_file"]
+    private_key_file = app.config["private_key_file"]
 
     c2pa_processor = C2PAText(
         public_key_file=public_key_file,
         private_key_file=private_key_file,
     )
 
-    with open("output/c2pa_text_test.json", "r", encoding="utf-8") as fp:
-        text = json.load(fp).get("encoded_text", "")
-
+    text = flask.request.form.get("text", "")
     is_valid, signer, payload = c2pa_processor.verify(text)
 
+    logger.info(f"Input text: {text}")
     logger.info(f"Result: {is_valid}")
+
+    if payload is not None:
+        payload = json.dumps(payload, indent=4)
 
     contents = flask.render_template(
         "index.html.j2", text=text, result=is_valid, payload=payload
     )
+
     return contents
 
 

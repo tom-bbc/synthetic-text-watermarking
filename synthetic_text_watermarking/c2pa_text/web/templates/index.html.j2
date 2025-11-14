@@ -1,40 +1,51 @@
-{# "base.html.j2" provides the base HTML layout that defines headers/content areas for all routes #}
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
-	<title>
-		C2PA Text | BBC R&D
-	</title>
+    <title>
+        C2PA Text | BBC R&D
+    </title>
 
-	{# Font packages #}
-	<link rel="preload" href="https://static.files.bbci.co.uk/fonts/reith/2.512/BBCReithSans_W_Rg.woff2" as="font"
-		type="font/woff2" crossorigin>
-	<link rel="preload" href="https://static.files.bbci.co.uk/fonts/reith/2.512/BBCReithSans_W_Bd.woff2" as="font"
-		type="font/woff2" crossorigin>
+    {# Packages #}
+    <script defer src="https://unpkg.com/pretty-json-custom-element/index.js"></script>
 
-	{# Favicon #}
-	<link rel="icon" href="{{ url_for('static', filename='images/rd-logo-favicon.jpeg' ) }}" type="image/x-icon">
+    {# Favicon #}
+    <link rel="icon" href="{{ url_for('static', filename='images/rd-logo-favicon.jpeg' ) }}" type="image/x-icon">
+
+	{# CSS #}
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css' ) }}" />
+
 </head>
 
 <body>
-	{# Content #}
-	<h1>
-		C2PA Text | BBC R&D
-	</h1>
+    {# Content #}
+    <h1>
+        C2PA Text | BBC R&D
+    </h1>
 
-	<h2>
-		Verify
-	</h2>
+    <h2>
+        Verify
+    </h2>
 
-	<br><br>
-	<p> <b>Input text:</b> {{ text }} </p>
-	<p> <b>Verification result:</b> {{ result }} </p>
-	<p> <b>Extracted manifest:</b> {{ payload }} </p>
+    <form method="POST" action="/verify">
+        <label for="text-input"><b>Enter text to verify:</b></label><br>
+        <textarea id="text-input" name="text" rows="4" required></textarea><br>
+        <button type="submit">Submit</button>
+    </form>
+
+    <br><br>
+    {% if text %}
+        <p> <b>Input text:</b> {{ text }} </p>
+        <p> <b>Verification result:</b> {{ result }} </p>
+
+		{% if payload %}
+			<p> <b>Extracted manifest:</b> <pretty-json> {{ payload }} </pretty-json> </p>
+		{% endif %}
+	{% endif %}
 
 </body>
 
