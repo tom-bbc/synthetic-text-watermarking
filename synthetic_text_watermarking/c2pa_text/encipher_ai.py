@@ -6,11 +6,15 @@ import json
 import time
 from typing import Dict, Optional, Tuple, Union
 
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PrivateKey,
     Ed25519PublicKey,
 )
-from encypher.core.keys import generate_ed25519_key_pair
+from cryptography.hazmat.primitives.serialization import (
+    load_pem_private_key,
+    load_pem_public_key,
+)
 from encypher.core.payloads import BasicPayload, ManifestPayload
 from encypher.core.unicode_metadata import UnicodeMetadata
 
@@ -22,8 +26,8 @@ from encypher.core.unicode_metadata import UnicodeMetadata
 class C2PAText:
     def __init__(
         self,
-        public_key: Optional[Ed25519PublicKey] = None,
-        private_key: Optional[Ed25519PrivateKey] = None,
+        public_key_file: str,
+        private_key_file: str,
     ) -> None:
         """
         The EncypherAI SDK provides a robust, C2PA-compliant solution for embedding
@@ -32,16 +36,33 @@ class C2PAText:
         manifest, embedding it, and verifying it.
         """
 
-        # Generate a new Ed25519 key pair if not provided
-        if public_key is None or private_key is None:
-            private_key, public_key = generate_ed25519_key_pair()
-
-        self.private_key = private_key
+        # Load your Ed25519 key pair from their pem files
+        public_key, private_key = self.load_keypair(public_key_file, private_key_file)
         self.public_key = public_key
-        self.signer_id_manifest = "manifest-signer-001"
+        self.private_key = private_key
 
         # Store public keys and create a provider function
+        self.signer_id_manifest = "manifest-signer-001"
         self.public_keys_store = {self.signer_id_manifest: self.public_key}
+
+    @staticmethod
+    def load_keypair(
+        public_key_file: str, private_key_file: str
+    ) -> Tuple[Ed25519PublicKey, Ed25519PrivateKey]:
+        """Load an Ed25519 key pair from the local public/private PEM files"""
+
+        # Get bytes data from PEM files
+        with open(public_key_file, "rb") as pem_in:
+            public_key_data = pem_in.read()
+
+        with open(private_key_file, "rb") as pem_in:
+            private_key_data = pem_in.read()
+
+        # Convert bytes into correct key format
+        public_key = load_pem_public_key(public_key_data, default_backend())
+        private_key = load_pem_private_key(private_key_data, None, default_backend())
+
+        return public_key, private_key
 
     def public_key_resolver(self, signer_id: str) -> Optional[Ed25519PublicKey]:
         """Function to retrieve public key during signing process."""
@@ -111,7 +132,13 @@ def main():
         end="\n\n",
     )
 
-    c2pa_processor = C2PAText()
+    public_key_file = "/Users/tompo/setup-data/C2PATextPublicKey.pem"
+    private_key_file = "/Users/tompo/setup-data/C2PATextPrivateKey.pem"
+
+    c2pa_processor = C2PAText(
+        public_key_file=public_key_file,
+        private_key_file=private_key_file,
+    )
 
     # -----------------------------------------------------------------
     # Create Text and Manifest

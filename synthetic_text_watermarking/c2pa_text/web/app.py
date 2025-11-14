@@ -32,12 +32,18 @@ logging.basicConfig(level=logging.INFO)
 
 @app.route("/")
 def index() -> str:
-    text = "Hello and welcome to BBC Radio 4 evening news."
+    public_key_file = "/Users/tompo/setup-data/C2PATextPublicKey.pem"
+    private_key_file = "/Users/tompo/setup-data/C2PATextPrivateKey.pem"
 
-    c2pa_processor = C2PAText()
-    signed_text = c2pa_processor.sign(text)
+    c2pa_processor = C2PAText(
+        public_key_file=public_key_file,
+        private_key_file=private_key_file,
+    )
 
-    is_valid, signer, payload = c2pa_processor.verify(signed_text)
+    with open("output/c2pa_text_test.json", "r", encoding="utf-8") as fp:
+        text = json.load(fp).get("encoded_text", "")
+
+    is_valid, signer, payload = c2pa_processor.verify(text)
 
     logger.info(f"Result: {is_valid}")
 
