@@ -20,6 +20,8 @@ accelerate = "^1.10.1"
 datasets = "^4.1.1"
 cryptography = "^46.0.3"
 encypher-ai = "^2.8.1"
+flask = "^3.1.2"
+requests = "^2.32.5"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0", "poetry-dynamic-versioning"]
@@ -27,3 +29,4 @@ build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry.scripts]
 c2pa_text_demo = "synthetic_text_watermarking.c2pa_text.encipher_ai:main"
+c2pa_text_web = "synthetic_text_watermarking.c2pa_text.web.app:main"

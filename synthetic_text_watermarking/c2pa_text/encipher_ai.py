@@ -2,6 +2,7 @@
 # Imports
 # -----------------------------------------------------------------
 
+import json
 import time
 from typing import Dict, Optional, Tuple, Union
 
@@ -47,8 +48,27 @@ class C2PAText:
 
         return self.public_keys_store.get(signer_id)
 
-    def sign(self, text: str, manifest: Dict) -> str:
+    def sign(self, text: str, manifest: Optional[Dict] = None) -> str:
         """Embed a C2PA-inspired manifest into the text."""
+
+        # Embed a C2PA-inspired manifest
+        if manifest is None:
+            manifest = {
+                "metadata_format": "cbor_manifest",  # Use CBOR or jumbf manifest format
+                "timestamp": int(time.time()),
+                "claim_generator": "EncypherAI README Example v2.3",
+                "actions": [
+                    {
+                        "action": "c2pa.created",
+                        "when": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                        "description": "Text was created by an AI model.",
+                    }
+                ],
+                "ai_info": {
+                    "model_id": "gpt-4o-2024-05-13",
+                    "prompt": "Write a short, important statement.",
+                },
+            }
 
         # Embed manifest into text
         encoded_text_manifest = UnicodeMetadata.embed_metadata(
@@ -134,6 +154,9 @@ def main():
 
     encoded_text_manifest = c2pa_processor.sign(original_text, c2pa_mainfest)
 
+    with open("output/c2pa_text_test.json", "w", encoding="utf-8") as fp:
+        json.dump({"encoded_text": encoded_text_manifest}, fp)
+
     print(f"\n<< * >> Text with embedded manifest: '{encoded_text_manifest}'")
 
     # -----------------------------------------------------------------
@@ -162,10 +185,13 @@ def main():
         end="\n\n",
     )
 
-    # 2. Attempt to verify tampered text
-    tampered_text = (
-        "It's " + encoded_text_manifest[encoded_text_manifest.index("an") + 3 :]
-    )
+    # Attempt to verify tampered text
+    # tampered_text = (
+    #     "It's " + encoded_text_manifest[encoded_text_manifest.index("an") + 3 :]
+    # )
+
+    with open("output/c2pa_text_test.json", "r", encoding="utf-8") as fp:
+        tampered_text = json.load(fp).get("encoded_text", "")
 
     is_tampered_valid, tampered_signer, tampered_payload = c2pa_processor.verify(
         tampered_text
