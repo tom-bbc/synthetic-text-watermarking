@@ -1,0 +1,3 @@
+[submodule "synthetic_text_watermarking/adversarial_watermarking_transformer"]
+	path = synthetic_text_watermarking/adversarial_watermarking_transformer
+	url = https://github.com/S-Abdelnabi/awt.git
