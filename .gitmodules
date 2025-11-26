@@ -1,3 +1,0 @@
-[submodule "synthetic_text_watermarking/adversarial_watermarking_transformer"]
-	path = synthetic_text_watermarking/adversarial_watermarking_transformer
-	url = git@github.com:tom-bbc/adversarial-watermarking-transformer.git
