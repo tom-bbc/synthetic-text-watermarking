@@ -1,8 +1,9 @@
 .venv/
+.env
 __pycache__/
 output/
 dataset/
-credentials.json
 *.json
 *.jsonl
 *.txt
+*.pt
