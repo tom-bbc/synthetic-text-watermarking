@@ -5,7 +5,7 @@
 import json
 import time
 
-from synthetic_text_watermarking.c2pa_text.c2pa_text import C2PAText
+from synthetic_text_watermarking.c2pa.c2pa_text import C2PAText
 
 # -----------------------------------------------------------------
 # Demo Entrypoint

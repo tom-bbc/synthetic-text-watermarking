@@ -10,7 +10,7 @@ from pathlib import Path
 
 import flask
 
-from synthetic_text_watermarking.c2pa_text.c2pa_text import C2PAText
+from synthetic_text_watermarking.c2pa.c2pa_text import C2PAText
 
 # -----------------------------------------------------------------
 # Webapp Setup
@@ -41,8 +41,8 @@ def index() -> str:
     return contents
 
 
-@app.route("/verify", methods=["GET", "POST"])
-def verify() -> str:
+@app.route("/c2pa_verify", methods=["GET", "POST"])
+def c2pa_verify() -> str:
     candidate_text = None
     is_valid = None
     payload = None
@@ -68,14 +68,14 @@ def verify() -> str:
                 payload = json.dumps(payload, indent=4)
 
     contents = flask.render_template(
-        "verify.html.j2", text=candidate_text, result=is_valid, payload=payload
+        "c2pa_verify.html.j2", text=candidate_text, result=is_valid, payload=payload
     )
 
     return contents
 
 
-@app.route("/sign", methods=["GET", "POST"])
-def sign() -> str:
+@app.route("/c2pa_sign", methods=["GET", "POST"])
+def c2pa_sign() -> str:
     signed_text = None
 
     if flask.request.method == "POST":
@@ -109,7 +109,7 @@ def sign() -> str:
 
             signed_text = c2pa_processor.sign(input_text, c2pa_mainfest)
 
-    contents = flask.render_template("sign.html.j2", text=signed_text)
+    contents = flask.render_template("c2pa_sign.html.j2", text=signed_text)
 
     return contents
 

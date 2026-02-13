@@ -10,7 +10,7 @@
         This process verifies whether a valid C2PA manifest exists within a candidate text.
     </p>
 
-    <form method="POST" action="/verify">
+    <form method="POST" action="/c2pa_verify">
         <label for="text-input"><b>Enter text to verify:</b></label><br>
         <textarea id="text-input" name="text" rows="4" required></textarea><br>
         <button type="submit">Submit</button>
@@ -18,7 +18,7 @@
 
     <br><br>
     {% if text %}
-        <p> <b>Input text:</b> {{ text }} </p>
+        <p> <b>Input text:</b> <br> {{ text }} </p>
         <p> <b>Verification result:</b> {{ result }} </p>
 
 		{% if payload %}

@@ -10,7 +10,7 @@
         This process embeds a C2PA manifest within an input sequence of plaintext.
     </p>
 
-    <form method="POST" action="/sign">
+    <form method="POST" action="/c2pa_sign">
         <label for="text-input"><b>Enter text to sign:</b></label><br>
         <textarea id="text-input" name="text" rows="4" required></textarea><br>
         <button type="submit">Submit</button>
@@ -18,7 +18,7 @@
 
     <br><br>
     {% if text %}
-        <p> <b>Output text:</b> {{ text }} </p>
+        <p> <b>Output text:</b> <br> {{ text }} </p>
 	{% endif %}
 
 {% endblock %}

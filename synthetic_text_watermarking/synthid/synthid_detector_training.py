@@ -35,11 +35,6 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import torch
-from synthid_training_utils import (
-    process_raw_model_outputs,
-    update_fn_if_fpr_tpr,
-    upload_model_to_hf,
-)
 from tqdm import tqdm
 from transformers import (
     AutoModelForCausalLM,
@@ -48,6 +43,12 @@ from transformers import (
     BayesianDetectorModel,
     SynthIDTextWatermarkingConfig,
     SynthIDTextWatermarkLogitsProcessor,
+)
+
+from synthetic_text_watermarking.synthid.synthid_training_utils import (
+    process_raw_model_outputs,
+    update_fn_if_fpr_tpr,
+    upload_model_to_hf,
 )
 
 # --------------------------------------------------------------------------- #

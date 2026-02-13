@@ -28,5 +28,6 @@ requires = ["poetry-core>=2.0.0,<3.0.0", "poetry-dynamic-versioning"]
 build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry.scripts]
-c2pa_text_demo = "synthetic_text_watermarking.c2pa_text.demo:main"
-c2pa_text_web = "synthetic_text_watermarking.c2pa_text.web.app:main"
+c2pa_demo = "synthetic_text_watermarking.c2pa.demo:main"
+synthid_demo = "synthetic_text_watermarking.synthid.watermark:main"
+web = "synthetic_text_watermarking.web.app:main"

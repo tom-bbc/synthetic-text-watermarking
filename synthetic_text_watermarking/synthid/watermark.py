@@ -161,7 +161,7 @@ def mean_detector(
     return mean_g
 
 
-if __name__ == "__main__":
+def main():
     # -----------------------------------------------------------------------------
     # Load arguments from command line
     parser = argparse.ArgumentParser()
@@ -252,6 +252,8 @@ if __name__ == "__main__":
 
     # -----------------------------------------------------------------------------
     # Run watermark detection on an input text
+    watermarked = None
+
     if detect and watermark_keys is not None:
         if detector_type == "mean" and watermark_config is not None:
             watermarked = mean_detector(
@@ -260,3 +262,9 @@ if __name__ == "__main__":
 
         elif detector_type == "bayesian":
             watermarked = bayesian_detector(synthetic_text, device)
+
+    return watermarked
+
+
+if __name__ == "__main__":
+    main()
