@@ -17,10 +17,24 @@
         We hope that the availability of SynthID-Text will facilitate further development of watermarking and responsible use of LLM systems.
     </p>
 
+    <form method="post" action="{{ url_for('synthid_watermark') }}">
+        <button type="submit">Generate a watermarked text</button>
+    </form>
+
+    <form method="post" action="{{ url_for('synthid_verify') }}">
+        <button type="submit">Verify a text as watermarked</button>
+    </form>
+
     <br><br>
     <h2>
         C2PA Text
     </h2>
+
+    <p>
+        C2PA manifests are typically embedded in binary files (JPEG, PNG, MP4).
+        For unstructured text where traditional file-based embedding is not practical, such as content intended for copy-paste operations across different systems, C2PA Manifests may be embedded directly into a Unicode-encoded text stream.
+        This method uses a sequence of Unicode Variation Selectors to encode a C2PA Manifest Store in a way that is not visually rendered, ensuring that Content Credentials persist with the content itself across platforms.
+    </p>
 
     <p>
         The EncypherAI SDK provides a robust, C2PA-compliant solution for embedding provenance and authenticity metadata directly into plain text.

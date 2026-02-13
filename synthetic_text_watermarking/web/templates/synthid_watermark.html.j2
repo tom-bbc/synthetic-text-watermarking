@@ -1,0 +1,24 @@
+{# "verfify.html.js" populates the /verify route #}
+{% extends "base.html.j2" %}
+
+{% block page_content %}
+    <h2>
+        Generate a watermarked text
+    </h2>
+
+    <p>
+        This process generates an LLM response that is a watermarked text.
+    </p>
+
+    <form method="POST" action="/synthid_watermark">
+        <label for="text-input"><b>Enter prompt:</b></label><br>
+        <textarea id="text-input" name="text" rows="4" required></textarea><br>
+        <button type="submit">Submit</button>
+    </form>
+
+    <br><br>
+    {% if text %}
+        <p> <b>Watermarked LLM response:</b> <br> {{ text }} </p>
+	{% endif %}
+
+{% endblock %}

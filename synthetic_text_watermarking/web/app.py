@@ -28,8 +28,9 @@ app.config["private_key_file"] = "/Users/tompo/setup-data/C2PATextPrivateKey.pem
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+
 # -----------------------------------------------------------------
-# Webapp Routes
+# Homepage
 # -----------------------------------------------------------------
 
 
@@ -41,37 +42,9 @@ def index() -> str:
     return contents
 
 
-@app.route("/c2pa_verify", methods=["GET", "POST"])
-def c2pa_verify() -> str:
-    candidate_text = None
-    is_valid = None
-    payload = None
-
-    if flask.request.method == "POST":
-        candidate_text = flask.request.form.get("text", None)
-
-        if candidate_text is not None:
-            public_key_file = app.config["public_key_file"]
-            private_key_file = app.config["private_key_file"]
-
-            c2pa_processor = C2PAText(
-                public_key_file=public_key_file,
-                private_key_file=private_key_file,
-            )
-
-            is_valid, signer, payload = c2pa_processor.verify(candidate_text)
-
-            logger.info(f"Input text: {candidate_text}")
-            logger.info(f"Result: {is_valid}")
-
-            if payload is not None:
-                payload = json.dumps(payload, indent=4)
-
-    contents = flask.render_template(
-        "c2pa_verify.html.j2", text=candidate_text, result=is_valid, payload=payload
-    )
-
-    return contents
+# -----------------------------------------------------------------
+# C2PA Text Routes
+# -----------------------------------------------------------------
 
 
 @app.route("/c2pa_sign", methods=["GET", "POST"])
@@ -110,6 +83,77 @@ def c2pa_sign() -> str:
             signed_text = c2pa_processor.sign(input_text, c2pa_mainfest)
 
     contents = flask.render_template("c2pa_sign.html.j2", text=signed_text)
+
+    return contents
+
+
+@app.route("/c2pa_verify", methods=["GET", "POST"])
+def c2pa_verify() -> str:
+    candidate_text = None
+    is_valid = None
+    payload = None
+
+    if flask.request.method == "POST":
+        candidate_text = flask.request.form.get("text", None)
+
+        if candidate_text is not None:
+            public_key_file = app.config["public_key_file"]
+            private_key_file = app.config["private_key_file"]
+
+            c2pa_processor = C2PAText(
+                public_key_file=public_key_file,
+                private_key_file=private_key_file,
+            )
+
+            is_valid, signer, payload = c2pa_processor.verify(candidate_text)
+
+            logger.info(f"Input text: {candidate_text}")
+            logger.info(f"Result: {is_valid}")
+
+            if payload is not None:
+                payload = json.dumps(payload, indent=4)
+
+    contents = flask.render_template(
+        "c2pa_verify.html.j2", text=candidate_text, result=is_valid, payload=payload
+    )
+
+    return contents
+
+
+@app.route("/synthid_watermark", methods=["GET", "POST"])
+def synthid_watermark() -> str:
+    signed_text = None
+
+    if flask.request.method == "POST":
+        input_text = flask.request.form.get("text", None)
+
+        if input_text is not None:
+            signed_text = "This is an example response"
+
+    contents = flask.render_template("synthid_watermark.html.j2", text=signed_text)
+
+    return contents
+
+
+@app.route("/synthid_verify", methods=["GET", "POST"])
+def synthid_verify() -> str:
+    candidate_text = None
+    is_valid = None
+
+    if flask.request.method == "POST":
+        candidate_text = flask.request.form.get("text", None)
+
+        if candidate_text is not None:
+            is_valid = True
+
+            logger.info(f"Input text: {candidate_text}")
+            logger.info(f"Result: {is_valid}")
+
+    contents = flask.render_template(
+        "synthid_verify.html.j2",
+        text=candidate_text,
+        result=is_valid,
+    )
 
     return contents
 
