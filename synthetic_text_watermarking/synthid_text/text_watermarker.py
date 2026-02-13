@@ -5,7 +5,8 @@
 import argparse
 import json
 import os
-from typing import List, Tuple
+from pathlib import Path
+from typing import Dict, List, Tuple
 
 import torch
 from transformers import (
@@ -33,7 +34,7 @@ def load_model(
 
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        torch_dtype=torch.bfloat16,
+        dtype=torch.bfloat16,
     )
     model = model.to(device)
     print(f"Model running on device: {model.device}")
@@ -41,7 +42,9 @@ def load_model(
     return model, tokenizer
 
 
-def watermark_synthid(model_name: str, prompt: str, watermark_keys: List[int]):
+def watermark_synthid(
+    model_name: str, prompt: str, watermark_keys: List[int], device: torch.device
+):
     """
     Generate a text response to the input 'prompt' using the HF model 'model_name'
     that is watermarked using Google's SynthID.
@@ -49,7 +52,7 @@ def watermark_synthid(model_name: str, prompt: str, watermark_keys: List[int]):
 
     # Instantiate generator model and tokenizer
     print(f" << * >> Instantiating model: '{model_name}'")
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
     model, tokenizer = load_model(model_name, device)
 
     # Create SynthID watermarking config
@@ -89,7 +92,7 @@ def watermark_synthid(model_name: str, prompt: str, watermark_keys: List[int]):
     return watermarked_text
 
 
-def detect_synthid(input_text: str) -> float:
+def bayesian_detector(input_text: str, device: torch.device) -> float:
     """
     Check whether a given text 'input_text' is likely to have been watermarked
     using Google's SynthID.
@@ -124,6 +127,40 @@ def detect_synthid(input_text: str) -> float:
     return watermark_likelihood
 
 
+def mean_detector(
+    input_text: str,
+    watermarking_config: Dict,
+    generator_model: str,
+    device: torch.device,
+) -> float:
+    """
+    Check whether a given text 'input_text' is likely to have been watermarked
+    using Google's SynthID.
+    """
+
+    _, tokenizer = load_model(generator_model, device)
+
+    logits_processor = SynthIDTextWatermarkLogitsProcessor(
+        **watermarking_config,
+        device=device,
+    )
+
+    inputs = tokenizer(input_text, return_tensors="pt").to(device)
+    input_ids = inputs.input_ids
+
+    if input_ids.shape[1] == 0:
+        return 0.0
+
+    # Employs a pre-computed sampling table to sample watermarking values (g-values)
+    # based on the generated keys.
+    g_values = logits_processor.compute_g_values(input_ids)
+    mean_g = g_values.float().mean().item()
+
+    print(f" << * >> Mean g-score: {mean_g}")
+
+    return mean_g
+
+
 if __name__ == "__main__":
     # -----------------------------------------------------------------------------
     # Load arguments from command line
@@ -134,42 +171,71 @@ if __name__ == "__main__":
         help="Run model generation with watermarking of generated text.",
     )
     parser.add_argument(
+        "--input-text",
+        type=str,
+        default=None,
+        help="Input text to pass to generator or detector model.",
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to JSON file defining watermarking config.",
+    )
+    parser.add_argument(
         "--detect",
         action="store_true",
         help="Run watermark detection on an input text.",
     )
     parser.add_argument(
-        "--input_text",
+        "--detector-type",
         type=str,
-        default=None,
-        help=("Input text to pass to generator or detector model."),
-    )
-    parser.add_argument(
-        "--watermarking_config",
-        type=str,
-        default=None,
-        help=("Path to JSON file defining watermarking config."),
+        default="mean",
+        help="Type of watermark extraction algorithm to use.",
     )
 
     args = parser.parse_args()
-    watermarking_config = args.watermarking_config
     watermark = args.watermark
-    detect = args.detect
     input_text = args.input_text
+    config = args.config
+    detect = args.detect
+    detector_type = args.detector_type
+
+    print(f" << * >> Run watermarking: {watermark}")
+    print(f" << * >> Input text: {input_text}")
+    print(f" << * >> Watermarking config: {config}")
+    print(f" << * >> Run detection: {detect}")
+    print(f" << * >> Detector type: {detector_type}")
+
+    if config is None:
+        config = Path(__file__).parent / "watermark_config.json"
+
+    if config is not None and os.path.isfile(config):
+        # Load waterkarking keys: a list of 20-30 random integers that serve as your private digital signature  # noqa
+        with open(config, "r", encoding="utf-8") as fp:
+            watermark_config = json.load(fp)
+
+        watermark_keys = watermark_config["keys"]
+        print(f" << * >> Watermark key: {watermark_keys}")
+    else:
+        watermark_config = None
+        watermark_keys = None
+
+    # -----------------------------------------------------------------------------
+    # Configure model and hyperparams
+    model_name = "google/gemma-2-2b-it"
+
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
 
     # -----------------------------------------------------------------------------
     # Run model generation with watermarking of generated text
-    if watermark and os.path.isfile(watermarking_config):
-        # Load waterkarking keys: a list of 20-30 random integers that serve as your private digital signature  # noqa
-        watermarking_config = "credentials.json"
-        with open(watermarking_config, "r", encoding="utf-8") as fp:
-            config = json.load(fp)
-
-        watermark_keys = config["keys"]
-
-        # Specify generator model and input prompt
-        model_name = "google/gemma-2-2b-it"
-
+    if watermark and watermark_keys is not None:
+        # Validate input text
         if input_text is None:
             prompt = "Please re-write the following article in the style of a BBC News Article. \n\nInput Article:\nA report revealed that 253 potential victims of slavery were reported in Hampshire and the Isle of Wight, of which one in four were children. Modern slavery, which includes human trafficking, is the illegal exploitation of people for personal or commercial gain. It can take different forms of slavery, such as domestic or labour exploitation, organ harvesting, EU Status exploitation, and financial, sexual and criminal exploitation. Each year, Hampshire and Isle of Wight Fire and Rescue Authority (HIWFRA), combined by all four authorities, the three unitary councils, and the county council, spends around £99m on making \"life safer\" in the county and preventing slavery and human trafficking. However, a recent report of the HIWFRA has revealed that by June 2023, there were 253 potential victims identified of modern slavery in Hampshire and the Isle of Wight. Of them, one in four were children. According to the Government's UK Annual Report on Modern Slavery, 10,613 potential victims were referred to the National Referral Mechanism in the year ended September 2021. In case any member of the Authority or any of its staff suspects slavery or human trafficking activity either within the community or the organisation, then the concerns will be reported through the Service's Safeguarding Reporting Procedure.\n\nBBC Article:\n"  # noqa
         else:
@@ -177,14 +243,20 @@ if __name__ == "__main__":
 
         # Run text generation and watermarking process
         print(" << * >> Running watermarking process")
-        synthetic_text = watermark_synthid(model_name, prompt, watermark_keys)
+        synthetic_text = watermark_synthid(model_name, prompt, watermark_keys, device)
 
     elif input_text is None:
-        synthetic_text = "This is a test input"
+        synthetic_text = "A report revealed that 253 potential victims of slavery were reported in Hampshire and the Isle of Wight, of which one in four were children. Modern slavery, which includes human trafficking, is the illegal exploitation of people for personal or commercial gain. It can take different forms of slavery, such as domestic or labour exploitation, organ harvesting, EU Status exploitation, and financial, sexual and criminal exploitation. Each year, Hampshire and Isle of Wight Fire and Rescue Authority (HIWFRA), combined by all four authorities, the three unitary councils, and the county council, spends around £99m on making \"life safer\" in the county and preventing slavery and human trafficking. However, a recent report of the HIWFRA has revealed that by June 2023, there were 253 potential victims identified of modern slavery in Hampshire and the Isle of Wight. Of them, one in four were children. According to the Government's UK Annual Report on Modern Slavery, 10,613 potential victims were referred to the National Referral Mechanism in the year ended September 2021. In case any member of the Authority or any of its staff suspects slavery or human trafficking activity either within the community or the organisation, then the concerns will be reported through the Service's Safeguarding Reporting Procedure.\n\nBBC Article:\n"  # noqa
     else:
         synthetic_text = input_text
 
     # -----------------------------------------------------------------------------
     # Run watermark detection on an input text
-    if detect:
-        watermarked = detect_synthid(synthetic_text)
+    if detect and watermark_keys is not None:
+        if detector_type == "mean" and watermark_config is not None:
+            watermarked = mean_detector(
+                synthetic_text, watermark_config, model_name, device
+            )
+
+        elif detector_type == "bayesian":
+            watermarked = bayesian_detector(synthetic_text, device)
