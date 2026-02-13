@@ -40,7 +40,7 @@ def main():
     )
 
     # Original text to be signed
-    original_text = "Ahead of every Budget, the chancellor submits their plans to the Office for Budget Responsibility (OBR), which then make forecasts on whether the government will spend more money than it raises and whether the economy will grow or shrink."
+    original_text = "Ahead of every Budget, the chancellor submits their plans to the Office for Budget Responsibility (OBR), which then make forecasts on whether the government will spend more money than it raises and whether the economy will grow or shrink."  # noqa
 
     # Embed a C2PA-inspired manifest
     # The library automatically calculates the content hash of the original text.

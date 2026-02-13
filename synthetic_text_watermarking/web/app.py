@@ -120,6 +120,11 @@ def c2pa_verify() -> str:
     return contents
 
 
+# -----------------------------------------------------------------
+# SynthID Text Routes
+# -----------------------------------------------------------------
+
+
 @app.route("/synthid_watermark", methods=["GET", "POST"])
 def synthid_watermark() -> str:
     signed_text = None

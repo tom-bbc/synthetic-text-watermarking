@@ -2,13 +2,17 @@
 {% extends "base.html.j2" %}
 
 {% block page_content %}
+    <p>
+        Large language models (LLMs) have enabled the generation of high-quality synthetic text, often indistinguishable from human-written content, at a scale that can markedly affect the nature of the information ecosystem.
+        Watermarking can help identify synthetic text and limit accidental or deliberate misuse, but has not been adopted in production systems owing to stringent quality, detectability and computational efficiency requirements.
+    </p>
+
+    <br>
     <h2>
         SynthID Text
     </h2>
 
     <p>
-        Large language models (LLMs) have enabled the generation of high-quality synthetic text, often indistinguishable from human-written content, at a scale that can markedly affect the nature of the information ecosystem.
-        Watermarking can help identify synthetic text and limit accidental or deliberate misuse, but has not been adopted in production systems owing to stringent quality, detectability and computational efficiency requirements.
         Here we describe SynthID-Text, a production-ready text watermarking scheme that preserves text quality and enables high detection accuracy, with minimal latency overhead.
         SynthID-Text does not affect LLM training and modifies only the sampling procedure; watermark detection is computationally efficient, without using the underlying LLM.
         To enable watermarking at scale, we develop an algorithm integrating watermarking with speculative sampling, an efficiency technique frequently used in production systems.
@@ -41,11 +45,12 @@
         This self-contained example demonstrates the end-to-end workflow: creating a manifest, embedding it, and verifying it.
     </p>
 
+    <form method="post" action="{{ url_for('c2pa_sign') }}">
+        <button type="submit">Sign an input text</button>
+    </form>
+
     <form method="post" action="{{ url_for('c2pa_verify') }}">
         <button type="submit">Verify a candidate text</button>
     </form>
 
-    <form method="post" action="{{ url_for('c2pa_sign') }}">
-        <button type="submit">Sign an input text</button>
-    </form>
 {% endblock %}
