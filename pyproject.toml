@@ -1,33 +1,34 @@
-[tool.poetry]
+[project]
 name = "synthetic-text-watermarking"
-version = "0.1.0"
-description = ""
+version = "0.2.0"
+description = "Demo of current approaches to watermarking synthetic text."
 readme = "README.md"
 authors = [
-    "Tom Potter <tom.potter@bbc.co.uk>",
+    {name = "Tom Potter", email = "tom.potter@bbc.co.uk"},
+]
+requires-python = ">=3.13"
+
+dependencies = [
+    "accelerate>=1.12.0",
+    "cryptography>=46.0.5",
+    "datasets>=4.5.0",
+    "encypher-ai>=3.0.6",
+    "flask>=3.1.2",
+    "matplotlib>=3.10.8",
+    "requests>=2.32.5",
+    "ruff>=0.15.1",
+    "scikit-learn>=1.8.0",
+    "streamlit>=1.54.0",
+    "tensorflow>=2.20.0",
+    "torch>=2.10.0",
+    "tqdm>=4.67.3",
+    "transformers>=5.2.0",
 ]
 
-[tool.poetry.dependencies]
-python = ">=3.10,<3.12"
-matplotlib = "^3.10.6"
-tqdm = "^4.67.1"
-openai = "^2.1.0"
-scikit-learn = "^1.7.2"
-tensorflow = "^2.20.0"
-accelerate = "^1.10.1"
-datasets = "^4.1.1"
-cryptography = "^46.0.3"
-encypher-ai = "^2.8.1"
-flask = "^3.1.2"
-requests = "^2.32.5"
-torch = "^2.10.0"
-transformers = "^5.1.0"
-
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0", "poetry-dynamic-versioning"]
-build-backend = "poetry_dynamic_versioning.backend"
-
-[tool.poetry.scripts]
+[project.scripts]
 c2pa_demo = "synthetic_text_watermarking.c2pa.demo:main"
 synthid_demo = "synthetic_text_watermarking.synthid.watermark:main"
-web = "synthetic_text_watermarking.web.app:main"
+
+[build-system]
+requires = ["setuptools>=78.1.0", "wheel>=0.45.1"]
+build-backend = "setuptools.build_meta"

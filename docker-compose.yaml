@@ -1,0 +1,15 @@
+# Docker service definitions
+services:
+    # Web demo
+    web:
+        platform: linux/arm64
+        build:
+            context: .
+        command: make web
+        ports:
+            - 4040:4040
+        volumes:
+            - /Users/tompo/setup-data/C2PATextPublicKey.pem:/wrk/C2PATextPublicKey.pem:ro
+            - /Users/tompo/setup-data/C2PATextPrivateKey.pem:/wrk/C2PATextPrivateKey.pem:ro
+        environment:
+            STW_PROD_ENV: True
