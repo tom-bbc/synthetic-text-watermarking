@@ -42,6 +42,7 @@ def main():
     st.subheader("Approaches")
     st.page_link("Home.py", label="Home", icon="🏠")
     st.page_link("pages/C2PA.py", label="C2PA", icon="📰")
+    st.page_link("pages/EncypherAI.py", label="EncypherAI", icon="📰")
     st.page_link("pages/SynthID.py", label="SynthID", icon="🍭")
 
 

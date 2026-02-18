@@ -3,12 +3,14 @@
 # --------------------------------------------------------------------------- #
 
 import os
+import time
 from pathlib import Path
-from typing import Tuple
+from typing import Optional, Tuple
 
 import streamlit as st
+from encypher.core.payloads import BasicPayload, C2PAPayload, ManifestPayload
 
-from synthetic_text_watermarking.c2pa.c2pa_text import C2PAText
+from synthetic_text_watermarking.c2pa.encypherai import C2PAText
 from synthetic_text_watermarking.c2pa.generate_key_pair import generate_c2pa_cert
 
 # --------------------------------------------------------------------------- #
@@ -38,6 +40,54 @@ def get_c2pa_certs() -> Tuple[Path, Path]:
     return public_key_file, private_key_file
 
 
+def c2pa_sign(input_text: str, public_key: Path, private_key: Path) -> str:
+    """Embed C2PA metadata into a given text."""
+
+    c2pa_processor = C2PAText(
+        public_key_file=public_key,
+        private_key_file=private_key,
+    )
+
+    c2pa_mainfest = {
+        "metadata_format": "cbor_manifest",  # Use CBOR or jumbf manifest format
+        "timestamp": int(time.time()),
+        "claim_generator": "EncypherAI README Example v2.3",
+        "actions": [
+            {
+                "action": "c2pa.created",
+                "when": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "description": "Text was created by an AI model.",
+            }
+        ],
+        "ai_info": {
+            "model_id": "gpt-4o-2024-05-13",
+            "prompt": "Write a short, important statement.",
+        },
+    }
+
+    signed_text = c2pa_processor.sign(input_text, c2pa_mainfest)
+
+    return signed_text
+
+
+def c2pa_verify(
+    candidate_text: str, public_key: Path, private_key: Path
+) -> Tuple[bool, Optional[BasicPayload | ManifestPayload | C2PAPayload]]:
+    """Verify whether a given text contains C2PA metadata."""
+
+    c2pa_processor = C2PAText(
+        public_key_file=public_key,
+        private_key_file=private_key,
+    )
+
+    is_valid, signer, payload = c2pa_processor.verify(candidate_text)
+
+    print(f"Input text: {candidate_text}")
+    print(f"Result: {is_valid}")
+
+    return is_valid, payload
+
+
 # --------------------------------------------------------------------------- #
 #                                  WEBAPP                                     #
 # --------------------------------------------------------------------------- #
@@ -47,6 +97,7 @@ def main():
     # Page config
     # ---------------------------------------------------------------------------
     # Set global variables and global page settings
+    public_key_file, private_key_file = get_c2pa_certs()
     page_title = "Synthetic Text Watermarking | BBC R&D"
     page_icon = "src/synthetic_text_watermarking/web/static/images/rd-logo-favicon.jpeg"
 
@@ -79,15 +130,6 @@ def main():
     st.space()
     st.subheader("Sign a text")
 
-    # public_key, private_key = get_c2pa_certs()
-    public_key = Path.home() / ".ssh/c2pa-cert-es256.pub"
-    private_key = Path.home() / ".ssh/c2pa-key-es256.pem"
-
-    c2pa_processor = C2PAText(
-        public_key_file=public_key,
-        private_key_file=private_key,
-    )
-
     with st.form(
         "c2pa_sign",
         clear_on_submit=True,
@@ -97,7 +139,7 @@ def main():
         submitted = st.form_submit_button("Submit")
 
         if submitted:
-            signed_text = c2pa_processor.sign(input_text)
+            signed_text = c2pa_sign(input_text, public_key_file, private_key_file)
 
             st.write(f"**Signed text:** \n\n{signed_text}")
 
@@ -115,12 +157,16 @@ def main():
         submitted = st.form_submit_button("Submit")
 
         if submitted:
-            status = c2pa_processor.verify(input_text)
+            status, payload = c2pa_verify(input_text, public_key_file, private_key_file)
 
             if status is True:
                 st.write(f"**Verification result:** :green[{status}]")
             else:
                 st.write(f"**Verification result:** :red[{status}]")
+
+            if payload is not None:
+                st.write("**Payload:**")
+                st.json(payload)
 
 
 # --------------------------------------------------------------------------- #

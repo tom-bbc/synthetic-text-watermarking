@@ -12,9 +12,12 @@ import streamlit as st
 def main():
     # Page config
     # ---------------------------------------------------------------------------
+    page_title = "Synthetic Text Watermarking | BBC R&D"
+    page_icon = "src/synthetic_text_watermarking/web/static/images/rd-logo-favicon.jpeg"
+
     st.set_page_config(
-        page_title="Synthetic Text Watermarking | BBC R&D",
-        page_icon="synthetic_text_watermarking/app/images/rd-logo-favicon.jpeg",
+        page_title=page_title,
+        page_icon=page_icon,
         initial_sidebar_state="collapsed",
     )
 

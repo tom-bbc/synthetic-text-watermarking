@@ -2,20 +2,17 @@
 # Imports
 # -----------------------------------------------------------------
 
+import io
+import json
+import os
 import time
-from typing import Dict, Optional, Tuple, Union
+from pathlib import Path
+from typing import Dict, Optional
 
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric.ed25519 import (
-    Ed25519PrivateKey,
-    Ed25519PublicKey,
-)
-from cryptography.hazmat.primitives.serialization import (
-    load_pem_private_key,
-    load_pem_public_key,
-)
-from encypher.core.payloads import BasicPayload, ManifestPayload
-from encypher.core.unicode_metadata import UnicodeMetadata
+from c2pa import Builder, C2paSignerInfo, C2paSigningAlg, Reader, Signer
+from c2pa_text import embed_manifest, extract_manifest, validate_manifest
+
+from synthetic_text_watermarking.c2pa.generate_key_pair import generate_c2pa_cert
 
 # -----------------------------------------------------------------
 # EmcipherAI C2PA Text Embedding and Verification Process
@@ -23,94 +20,126 @@ from encypher.core.unicode_metadata import UnicodeMetadata
 
 
 class C2PAText:
+    """
+    This library allows you to embed and extract C2PA manifests in unstructured text
+    (UTF-8) using invisible Unicode Variation Selectors.
+    """
+
     def __init__(
         self,
-        public_key_file: str,
-        private_key_file: str,
+        public_key_file: Optional[Path],
+        private_key_file: Optional[Path],
     ) -> None:
-        """
-        The EncypherAI SDK provides a robust, C2PA-compliant solution for embedding
-        provenance and authenticity metadata directly into plain text. This
-        self-contained example demonstrates the end-to-end workflow: creating a
-        manifest, embedding it, and verifying it.
-        """
+        # Check certificate exists, and if not create one
+        if (
+            public_key_file is None
+            or private_key_file is None
+            or not os.path.isfile(public_key_file)
+            or not os.path.isfile(private_key_file)
+        ):
+            cert_path = Path.home() / ".ssh/"
+            cert_path.mkdir(parents=True, exist_ok=True)
+
+            public_key_file = cert_path / "C2PATextPublicKey.pem"
+            private_key_file = cert_path / "C2PATextPrivateKey.pem"
+
+            public_key_file, private_key_file = generate_c2pa_cert(cert_path)
 
         # Load your Ed25519 key pair from their pem files
-        public_key, private_key = self.load_keypair(public_key_file, private_key_file)
-        self.public_key = public_key
-        self.private_key = private_key
+        print(f"Using C2PA certificate public key: {public_key_file}")
+        print(f"Using C2PA certificate private key: {private_key_file}")
 
-        # Store public keys and create a provider function
-        self.signer_id_manifest = "manifest-signer-001"
-        self.public_keys_store = {self.signer_id_manifest: self.public_key}
+        self.public_key = public_key_file
+        self.private_key = private_key_file
 
-    @staticmethod
-    def load_keypair(
-        public_key_file: str, private_key_file: str
-    ) -> Tuple[Ed25519PublicKey, Ed25519PrivateKey]:
-        """Load an Ed25519 key pair from the local public/private PEM files"""
+    def generate_manifest(self, input_text: str, manifest: dict):
+        # Create a signer from certificate and key files
+        with (
+            open(self.public_key, "rb") as cert_file,
+            open(self.private_key, "rb") as key_file,
+        ):
+            cert_data = cert_file.read()
+            key_data = key_file.read()
 
-        # Get bytes data from PEM files
-        with open(public_key_file, "rb") as pem_in:
-            public_key_data = pem_in.read()
+            # Create signer info using cert and key info
+            signer_info = C2paSignerInfo(
+                alg=C2paSigningAlg.ES256,
+                sign_cert=cert_data,
+                private_key=key_data,
+                ta_url="http://timestamp.digicert.com",
+            )
 
-        with open(private_key_file, "rb") as pem_in:
-            private_key_data = pem_in.read()
+            # Create signer using the defined SignerInfo
+            signer = Signer.from_info(signer_info)
 
-        # Convert bytes into correct key format
-        public_key = load_pem_public_key(public_key_data, default_backend())
-        private_key = load_pem_private_key(private_key_data, None, default_backend())
+            # Create builder with manifest to sign the input file
+            with Builder(manifest) as builder:
+                # source_data = input_text.encode()
+                source_data = io.BytesIO(b"JournalDev Python: \x00\x01")
+                manifest_bytes = builder.sign(
+                    signer,
+                    "application/x-c2pa-manifest-store",
+                    source_data,
+                )
 
-        return public_key, private_key
+        return manifest_bytes
 
-    def public_key_resolver(self, signer_id: str) -> Optional[Ed25519PublicKey]:
-        """Function to retrieve public key during signing process."""
-
-        return self.public_keys_store.get(signer_id)
-
-    def sign(self, text: str, manifest: Optional[Dict] = None) -> str:
+    def sign(self, text: str, manifest: Optional[Dict] = None) -> Optional[str]:
         """Embed a C2PA-inspired manifest into the text."""
 
-        # Embed a C2PA-inspired manifest
-        if manifest is None:
-            manifest = {
-                "metadata_format": "cbor_manifest",  # Use CBOR or jumbf manifest format
-                "timestamp": int(time.time()),
-                "claim_generator": "EncypherAI README Example v2.3",
-                "actions": [
-                    {
-                        "action": "c2pa.created",
-                        "when": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                        "description": "Text was created by an AI model.",
-                    }
-                ],
-                "ai_info": {
-                    "model_id": "gpt-4o-2024-05-13",
-                    "prompt": "Write a short, important statement.",
-                },
-            }
+        # 1. You have a binary C2PA manifest (JUMBF)
+        manifest = {
+            "metadata_format": "cbor_manifest",  # Use CBOR or jumbf manifest format
+            "timestamp": int(time.time()),
+            "claim_generator": "EncypherAI README Example v2.3",
+            "actions": [
+                {
+                    "action": "c2pa.created",
+                    "when": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "description": "Text was created by an AI model.",
+                }
+            ],
+            "ai_info": {
+                "model_id": "gpt-4o-2024-05-13",
+                "prompt": "Write a short, important statement.",
+            },
+        }
 
-        # Embed manifest into text
-        encoded_text_manifest = UnicodeMetadata.embed_metadata(
-            text=text,
-            private_key=self.private_key,
-            signer_id=self.signer_id_manifest,
-            **manifest,
-        )
+        manifest_bytes = self.generate_manifest(text, manifest)
 
-        return encoded_text_manifest
+        if manifest_bytes is None:
+            return None
 
-    def verify(
-        self, text: str
-    ) -> Tuple[bool, Optional[str], Union[BasicPayload, ManifestPayload, None]]:
+        # 2. Validate manifest before embedding
+        result = validate_manifest(manifest_bytes)
+        print(result)
+
+        # 3. Embed it into text
+        if result.valid:
+            watermarked_text = embed_manifest(text, manifest_bytes)
+        else:
+            watermarked_text = None
+
+        print(result)
+        print(watermarked_text)
+
+        return watermarked_text
+
+    def verify(self, text: str) -> bool:
         """
         Verification confirms both the signature's authenticity and the text's
         integrity. Any change to the original text will cause verification to fail.
         """
 
-        # Verify the original, unmodified text
-        is_valid, signer, payload = UnicodeMetadata.verify_metadata(
-            text=text, public_key_resolver=self.public_key_resolver
-        )
+        # 1. Attempt to manifest bytes from candidate text
+        extracted_bytes, clean_text = extract_manifest(text)
 
-        return (is_valid, signer, payload)
+        # 2. Validate extracted data
+        if extracted_bytes is not None:
+            result = validate_manifest(extracted_bytes)
+            manifest_validated = result.valid
+
+        else:
+            manifest_validated = False
+
+        return manifest_validated
