@@ -11,7 +11,7 @@ demo:
 # RUN TARGETS
 .PHONY: web
 web:
-	uv run streamlit run src/synthetic_text_watermarking/web/homepage.py --server.port 4040
+	uv run streamlit run src/synthetic_text_watermarking/web/Home.py
 
 
 # TEST TARGETS

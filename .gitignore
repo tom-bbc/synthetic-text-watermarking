@@ -5,6 +5,5 @@ output/
 dataset/
 *.json
 *.jsonl
-*.txt
 *.pt
 *.egg-info

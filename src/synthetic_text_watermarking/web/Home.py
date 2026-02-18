@@ -13,9 +13,12 @@ def main():
     # Page config
     # ---------------------------------------------------------------------------
     # Set global variables and global page settings
+    page_title = "Synthetic Text Watermarking | BBC R&D"
+    page_icon = "src/synthetic_text_watermarking/web/static/images/rd-logo-favicon.jpeg"
+
     st.set_page_config(
-        page_title="Synthetic Text Watermarking | BBC R&D",
-        page_icon="src/synthetic_text_watermarking/web/images/rd-logo-favicon.jpeg",
+        page_title=page_title,
+        page_icon=page_icon,
         initial_sidebar_state="collapsed",
     )
 
@@ -37,9 +40,9 @@ def main():
     # ---------------------------------------------------------------------------
     st.space()
     st.subheader("Approaches")
-    st.page_link("homepage.py", label="Home", icon="🏠")
-    st.page_link("pages/c2pa.py", label="C2PA", icon="📰")
-    st.page_link("pages/synthid.py", label="SynthID", icon="🍭")
+    st.page_link("Home.py", label="Home", icon="🏠")
+    st.page_link("pages/C2PA.py", label="C2PA", icon="📰")
+    st.page_link("pages/SynthID.py", label="SynthID", icon="🍭")
 
 
 # --------------------------------------------------------------------------- #
