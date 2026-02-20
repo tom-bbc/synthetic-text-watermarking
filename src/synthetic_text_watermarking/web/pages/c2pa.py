@@ -69,8 +69,8 @@ def main():
         For unstructured text where traditional file-based embedding is not practical, such as content intended for copy-paste operations across different systems, C2PA Manifests may be embedded directly into a Unicode-encoded text stream.
         This method uses a sequence of Unicode Variation Selectors to encode a C2PA Manifest Store in a way that is not visually rendered, ensuring that Content Credentials persist with the content itself across platforms.
 
-        The EncypherAI SDK provides a robust, C2PA-compliant solution for embedding provenance and authenticity metadata directly into plain text.
-        This self-contained example demonstrates the end-to-end workflow: creating a manifest, embedding it, and verifying it.
+        The C2PA Text library provides a standard wrapper structure that encodes the binary C2PA Manifest Store (JUMBF) into invisible characters that persist through copy-paste operations.
+        To generate the valid C2PA JUMBF manifest bytes, the core C2PA library is used. The C2PA Text library then handles the embedding layer (text steganography) and validation.
         """
     )
 
@@ -79,9 +79,15 @@ def main():
     st.space()
     st.subheader("Sign a text")
 
-    # public_key, private_key = get_c2pa_certs()
-    public_key = Path.home() / ".ssh/c2pa-cert-es256.pub"
-    private_key = Path.home() / ".ssh/c2pa-key-es256.pem"
+    # Link to C2PA test certificate (change in production use cases)
+    public_key = (
+        Path.cwd()
+        / "src/synthetic_text_watermarking/c2pa/certificates/test-cert-es256.pub"
+    )
+    private_key = (
+        Path.cwd()
+        / "src/synthetic_text_watermarking/c2pa/certificates/test-key-es256.pem"
+    )
 
     c2pa_processor = C2PAText(
         public_key_file=public_key,
@@ -97,8 +103,10 @@ def main():
         submitted = st.form_submit_button("Submit")
 
         if submitted:
+            input_text = input_text.strip()
             signed_text = c2pa_processor.sign(input_text)
 
+            print(f"\n >> **Signed text:** \n\n{signed_text}\n")
             st.write(f"**Signed text:** \n\n{signed_text}")
 
     # Verification process
@@ -115,12 +123,19 @@ def main():
         submitted = st.form_submit_button("Submit")
 
         if submitted:
-            status = c2pa_processor.verify(input_text)
+            is_valid, validation_code, manifest = c2pa_processor.verify(input_text)
 
-            if status is True:
-                st.write(f"**Verification result:** :green[{status}]")
+            if is_valid is True:
+                st.write("**Verification result:** \n:green[Valid C2PA manifest found]")
+
+                if manifest:
+                    st.space()
+                    st.json(manifest)
+
             else:
-                st.write(f"**Verification result:** :red[{status}]")
+                st.write(
+                    f"**Verification result:** \n:red[No valid C2PA manifest found] \n\nValidation code: \n:red[{validation_code}]"
+                )
 
 
 # --------------------------------------------------------------------------- #
