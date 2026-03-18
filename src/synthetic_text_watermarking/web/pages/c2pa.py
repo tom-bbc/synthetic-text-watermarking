@@ -2,41 +2,11 @@
 #                                  IMPORTS                                    #
 # --------------------------------------------------------------------------- #
 
-import os
 from pathlib import Path
-from typing import Tuple
 
 import streamlit as st
 
 from synthetic_text_watermarking.c2pa.c2pa_text import C2PAText
-from synthetic_text_watermarking.c2pa.generate_key_pair import generate_c2pa_cert
-
-# --------------------------------------------------------------------------- #
-#                             HELPER FUNCTIONS                                #
-# --------------------------------------------------------------------------- #
-
-
-def get_c2pa_certs() -> Tuple[Path, Path]:
-    c2pa_cert_dir = os.getenv("C2PA_CERT_DIR")
-
-    if c2pa_cert_dir is not None:
-        cert_path = Path(c2pa_cert_dir)
-
-        public_key_file = cert_path / "C2PATextPublicKey.pem"
-        private_key_file = cert_path / "C2PATextPrivateKey.pem"
-
-    else:
-        cert_path = Path.home() / ".ssh/"
-        cert_path.mkdir(parents=True, exist_ok=True)
-
-        public_key_file = cert_path / "C2PATextPublicKey.pem"
-        private_key_file = cert_path / "C2PATextPrivateKey.pem"
-
-        if not os.path.isfile(public_key_file) or not os.path.isfile(private_key_file):
-            public_key_file, private_key_file = generate_c2pa_cert(cert_path)
-
-    return public_key_file, private_key_file
-
 
 # --------------------------------------------------------------------------- #
 #                                  WEBAPP                                     #

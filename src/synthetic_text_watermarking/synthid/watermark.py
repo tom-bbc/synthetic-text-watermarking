@@ -6,7 +6,7 @@ import argparse
 import json
 import os
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import torch
 from transformers import (
@@ -24,11 +24,11 @@ from transformers import (
 
 
 def load_model(
-    model_name: str, device: torch.device
-) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
+    model_name: str, watermark_keys: List[int], device: torch.device
+) -> Tuple[AutoModelForCausalLM, AutoTokenizer, SynthIDTextWatermarkingConfig]:
     """Instantiate langauage model and tokenizer from Hugging Face."""
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, device=device)
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "left"
 
@@ -36,48 +36,46 @@ def load_model(
         model_name,
         dtype=torch.bfloat16,
     )
-    model = model.to(device)
-    print(f"Model running on device: {model.device}")
+    model = model.to(device)  # type: ignore
+    print(f" >> Model running on device: {model.device}")
 
-    return model, tokenizer
+    # Create SynthID watermarking config
+    # Specify word-seq length: The lower the values are, the more likely the watermarks are to survive heavy editing, but the harder they are to detect  # noqa
+    word_seq_len = 5
+    print(f" >> Instantiating watermarker with keys: {watermark_keys}")
+
+    watermarking_config = SynthIDTextWatermarkingConfig(
+        keys=watermark_keys, ngram_len=word_seq_len
+    )
+    print(f" >> Watermarking config set up: {watermarking_config}")
+
+    return model, tokenizer, watermarking_config  # type: ignore
 
 
-def watermark_synthid(
-    model_name: str, prompt: str, watermark_keys: List[int], device: torch.device
-):
+def generate_with_watermark(
+    prompt: str,
+    model: AutoModelForCausalLM,
+    tokenizer: AutoTokenizer,
+    watermarking_config,
+    device: torch.device,
+) -> str:
     """
     Generate a text response to the input 'prompt' using the HF model 'model_name'
     that is watermarked using Google's SynthID.
     """
 
-    # Instantiate generator model and tokenizer
-    print(f" << * >> Instantiating model: '{model_name}'")
-
-    model, tokenizer = load_model(model_name, device)
-
-    # Create SynthID watermarking config
-    # Specify word-seq length: The lower the values are, the more likely the watermarks are to survive heavy editing, but the harder they are to detect  # noqa
-    word_seq_len = 5
-    print(f" << * >> Instantiating watermarker with keys: {watermark_keys}")
-
-    watermarking_config = SynthIDTextWatermarkingConfig(
-        keys=watermark_keys, ngram_len=word_seq_len
-    )
-    print(f" << * >> Watermarking config set up: {watermarking_config}")
-
     # Format model inputs
-    print(f" << * >> Input prompt: '{prompt}'")
+    print(f" >> Input prompt: '{prompt}'")
 
-    prompt_toks = tokenizer(prompt, return_tensors="pt")
+    prompt_toks = tokenizer(prompt, return_tensors="pt", device=device)  # type: ignore
     prompt_toks = prompt_toks.to(device)
-    print(f" << * >> Encoded prompt: {prompt_toks}")
 
     max_new_tokens = 1024
     temperature = 1.0
 
     # Generate output that includes watermark
-    print(" << * >> Generating response")
-    response = model.generate(
+    print(" >> Generating response")
+    response = model.generate(  # type: ignore
         input_ids=prompt_toks["input_ids"],
         attention_mask=prompt_toks["attention_mask"],
         do_sample=True,
@@ -86,8 +84,11 @@ def watermark_synthid(
         watermarking_config=watermarking_config,
     )
 
-    watermarked_text = tokenizer.batch_decode(response, skip_special_tokens=True)[0]
-    print(f" << * >> Watermarked text output: '{watermarked_text}'")
+    watermarked_text = tokenizer.batch_decode(  # type: ignore
+        response, skip_special_tokens=True, device=device
+    )
+    watermarked_text = watermarked_text[0]
+    print(f" >> Watermarked text output: '{watermarked_text}'")
 
     return watermarked_text
 
@@ -106,31 +107,57 @@ def bayesian_detector(input_text: str, device: torch.device) -> float:
     detector_model_name = "joaogante/dummy_synthid_detector"
     bayesian_detector_model = BayesianDetectorModel.from_pretrained(detector_model_name)
     logits_processor = SynthIDTextWatermarkLogitsProcessor(
-        **bayesian_detector_model.config.watermarking_config, device="cpu"
+        **bayesian_detector_model.config.watermarking_config,  # type: ignore
+        device=device,
     )
-    tokenizer = AutoTokenizer.from_pretrained(bayesian_detector_model.config.model_name)
+    tokenizer = AutoTokenizer.from_pretrained(
+        bayesian_detector_model.config.model_name, device=device
+    )
 
     detector = SynthIDTextWatermarkDetector(
         bayesian_detector_model, logits_processor, tokenizer
     )
-    print(" << * >> Instantiated detector model")
+    print(" >> Instantiated detector model")
 
     # Pass input text to the detector model
     text_toks = tokenizer(input_text, return_tensors="pt")
-    print(f" << * >> Input text: '{input_text}'")
-    print(f" << * >> Encoded text: {text_toks}")
+    print(f" >> Input text: '{input_text}'")
+    print(f" >> Encoded text: {text_toks}")
 
     watermark_likelihood = detector(text_toks.input_ids)
     watermark_likelihood = watermark_likelihood[0][0]
-    print(f" << * >> Likelihood of watermark: {watermark_likelihood * 100:.2f}%")
+    print(f" >> Likelihood of watermark: {watermark_likelihood * 100:.2f}%")
 
     return watermark_likelihood
 
 
-def mean_detector(
-    input_text: str,
+def load_mean_detector(
     watermarking_config: Dict,
     generator_model: str,
+    device: torch.device,
+    tokenizer: Optional[AutoTokenizer] = None,
+) -> tuple[AutoTokenizer, SynthIDTextWatermarkLogitsProcessor]:
+
+    if tokenizer is None:
+        tokenizer = AutoTokenizer.from_pretrained(  # type: ignore
+            generator_model, device=device
+        )
+
+        tokenizer.pad_token = tokenizer.eos_token  # type: ignore
+        tokenizer.padding_side = "left"  # type: ignore
+
+    logits_processor = SynthIDTextWatermarkLogitsProcessor(
+        **watermarking_config,
+        device=device,
+    )
+
+    return tokenizer, logits_processor  # type: ignore
+
+
+def run_mean_detector(
+    input_text: str,
+    tokenizer: AutoTokenizer,
+    logits_processor: SynthIDTextWatermarkLogitsProcessor,
     device: torch.device,
 ) -> float:
     """
@@ -138,14 +165,8 @@ def mean_detector(
     using Google's SynthID.
     """
 
-    _, tokenizer = load_model(generator_model, device)
-
-    logits_processor = SynthIDTextWatermarkLogitsProcessor(
-        **watermarking_config,
-        device=device,
-    )
-
-    inputs = tokenizer(input_text, return_tensors="pt").to(device)
+    inputs = tokenizer(input_text, return_tensors="pt")  # type: ignore
+    inputs = inputs.to(device)
     input_ids = inputs.input_ids
 
     if input_ids.shape[1] == 0:
@@ -156,7 +177,7 @@ def mean_detector(
     g_values = logits_processor.compute_g_values(input_ids)
     mean_g = g_values.float().mean().item()
 
-    print(f" << * >> Mean g-score: {mean_g}")
+    print(f" >> Mean g-score: {mean_g}")
 
     return mean_g
 
@@ -201,11 +222,11 @@ def main():
     detect = args.detect
     detector_type = args.detector_type
 
-    print(f" << * >> Run watermarking: {watermark}")
-    print(f" << * >> Input text: {input_text}")
-    print(f" << * >> Watermarking config: {config}")
-    print(f" << * >> Run detection: {detect}")
-    print(f" << * >> Detector type: {detector_type}")
+    print(f" >> Run watermarking: {watermark}")
+    print(f" >> Input text: {input_text}")
+    print(f" >> Watermarking config: {config}")
+    print(f" >> Run detection: {detect}")
+    print(f" >> Detector type: {detector_type}")
 
     if config is None:
         config = Path(__file__).parent / "watermark_config.json"
@@ -216,7 +237,7 @@ def main():
             watermark_config = json.load(fp)
 
         watermark_keys = watermark_config["keys"]
-        print(f" << * >> Watermark key: {watermark_keys}")
+        print(f" >> Watermark key: {watermark_keys}")
     else:
         watermark_config = None
         watermark_keys = None
@@ -235,6 +256,13 @@ def main():
     # -----------------------------------------------------------------------------
     # Run model generation with watermarking of generated text
     if watermark and watermark_keys is not None:
+        # Instantiate generator model and tokenizer
+        print(f" >> Instantiating model: '{model_name}'")
+
+        model, tokenizer, watermarking_config = load_model(
+            model_name, watermark_keys, device
+        )
+
         # Validate input text
         if input_text is None:
             prompt = "Please re-write the following article in the style of a BBC News Article. \n\nInput Article:\nA report revealed that 253 potential victims of slavery were reported in Hampshire and the Isle of Wight, of which one in four were children. Modern slavery, which includes human trafficking, is the illegal exploitation of people for personal or commercial gain. It can take different forms of slavery, such as domestic or labour exploitation, organ harvesting, EU Status exploitation, and financial, sexual and criminal exploitation. Each year, Hampshire and Isle of Wight Fire and Rescue Authority (HIWFRA), combined by all four authorities, the three unitary councils, and the county council, spends around £99m on making \"life safer\" in the county and preventing slavery and human trafficking. However, a recent report of the HIWFRA has revealed that by June 2023, there were 253 potential victims identified of modern slavery in Hampshire and the Isle of Wight. Of them, one in four were children. According to the Government's UK Annual Report on Modern Slavery, 10,613 potential victims were referred to the National Referral Mechanism in the year ended September 2021. In case any member of the Authority or any of its staff suspects slavery or human trafficking activity either within the community or the organisation, then the concerns will be reported through the Service's Safeguarding Reporting Procedure.\n\nBBC Article:\n"  # noqa
@@ -242,8 +270,10 @@ def main():
             prompt = input_text
 
         # Run text generation and watermarking process
-        print(" << * >> Running watermarking process")
-        synthetic_text = watermark_synthid(model_name, prompt, watermark_keys, device)
+        print(" >> Running watermarking process")
+        synthetic_text = generate_with_watermark(
+            prompt, model, tokenizer, watermarking_config, device
+        )
 
     elif input_text is None:
         synthetic_text = "A report revealed that 253 potential victims of slavery were reported in Hampshire and the Isle of Wight, of which one in four were children. Modern slavery, which includes human trafficking, is the illegal exploitation of people for personal or commercial gain. It can take different forms of slavery, such as domestic or labour exploitation, organ harvesting, EU Status exploitation, and financial, sexual and criminal exploitation. Each year, Hampshire and Isle of Wight Fire and Rescue Authority (HIWFRA), combined by all four authorities, the three unitary councils, and the county council, spends around £99m on making \"life safer\" in the county and preventing slavery and human trafficking. However, a recent report of the HIWFRA has revealed that by June 2023, there were 253 potential victims identified of modern slavery in Hampshire and the Isle of Wight. Of them, one in four were children. According to the Government's UK Annual Report on Modern Slavery, 10,613 potential victims were referred to the National Referral Mechanism in the year ended September 2021. In case any member of the Authority or any of its staff suspects slavery or human trafficking activity either within the community or the organisation, then the concerns will be reported through the Service's Safeguarding Reporting Procedure.\n\nBBC Article:\n"  # noqa
@@ -256,8 +286,11 @@ def main():
 
     if detect and watermark_keys is not None:
         if detector_type == "mean" and watermark_config is not None:
-            watermarked = mean_detector(
-                synthetic_text, watermark_config, model_name, device
+            tokenizer, logits_processor = load_mean_detector(
+                watermark_config, model_name, device
+            )
+            watermarked = run_mean_detector(
+                synthetic_text, tokenizer, logits_processor, device
             )
 
         elif detector_type == "bayesian":
