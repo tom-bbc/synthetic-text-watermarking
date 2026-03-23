@@ -98,7 +98,7 @@ class C2PAText:
         """Decode C2PA manifest data from extracted manifest bytes."""
 
         # 1. Convert manifest bytes into a readable byte stream
-        manifest_byte_steam = io.BytesIO(manifest_bytes)
+        # manifest_byte_steam = io.BytesIO(manifest_bytes)
         text_stream = io.StringIO(signed_text)
         print(f"\n >> Supported MIME types: {Reader.get_supported_mime_types()}")
 

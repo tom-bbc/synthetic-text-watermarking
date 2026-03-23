@@ -1,10 +1,18 @@
-# Docker service definitions
 services:
-    # Web demo
     web:
-        platform: linux/arm64
         build:
             context: .
         command: make web
         ports:
-            - 4040:4040
+            - "4040:4040"
+        environment:
+            - OPENAI_API_BASE_URL=http://model-runner.docker.internal/engines/v1
+            - OPENAI_API_KEY=""
+        volumes:
+            - .:/wrk
+        models:
+            - llm
+
+models:
+    llm:
+        model: ai/smollm2-vllm

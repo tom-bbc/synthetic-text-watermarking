@@ -1,11 +1,15 @@
 # BUILD TARGETS
 .PHONY: build
 build:
-	docker build -t synthetic-text-watermarking .
+	docker build -t synthetic-text-watermarking --platform linux/arm64 .
 
-.PHONY: demo
-demo:
-	docker compose up --build
+.PHONY: demo-up
+demo-up:
+	docker compose up --build --detach
+
+.PHONY: demo-down
+demo-down:
+	docker compose down web
 
 
 # RUN TARGETS
