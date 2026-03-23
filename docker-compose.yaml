@@ -9,10 +9,10 @@ services:
             - OPENAI_API_BASE_URL=http://model-runner.docker.internal/engines/v1
             - OPENAI_API_KEY=""
         volumes:
-            - .:/wrk
+            - ./src/synthetic_text_watermarking:/wrk/src/synthetic_text_watermarking:ro
         models:
             - llm
 
 models:
     llm:
-        model: ai/smollm2-vllm
+        model: ai/gemma3-vllm:270M

@@ -14,7 +14,11 @@ ENV UV_PYTHON_DOWNLOADS=0
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Copy the project into the image
-COPY . /wrk
+COPY README.md /wrk/
+COPY Makefile /wrk/
+COPY pyproject.toml /wrk/
+COPY uv.lock /wrk/
+COPY src/ /wrk/src
 
 # Sync the project into a new environment
 RUN uv sync --locked
