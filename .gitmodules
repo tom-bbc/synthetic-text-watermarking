@@ -1,0 +1,3 @@
+[submodule "unified-watermarking"]
+	path = unified-watermarking
+	url = https://github.com/eth-sri/unified-watermarking.git
