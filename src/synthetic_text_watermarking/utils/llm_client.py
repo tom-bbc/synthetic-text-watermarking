@@ -3,6 +3,7 @@
 # --------------------------------------------------------------------------- #
 
 import os
+import json
 
 from openai import OpenAI
 
@@ -37,24 +38,64 @@ class LLMClient:
             api_key="",
         )
 
+        self.messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+        ]
+
+        self.watermark_config = {
+            "watermark_class": "KGW",
+            "epsilon": 1.0,
+            "vocab_size": 128256,
+            "rng_device": "cpu",
+            "seeding_scheme": "sumhash",
+            "context_size": 4,
+            "seed": 0,
+            "top_k": 50,
+            "distribution_name": "binomial",
+            "distribution_parameters": json.dumps({"total_count": 1, "probs": 0.5}),
+        }
+
     def models(self) -> dict:
         response = self.client.models.list()
         response_content = response.to_dict()
 
         return response_content
 
-    def prompt(self, prompt: str) -> str | None:
+    def generate(self, prompt: str) -> str | None:
+        self.messages.append(
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        )
+
         response = self.client.chat.completions.create(
-            model=self.llm_name,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {
-                    "role": "user",
-                    "content": prompt,
-                },
-            ],
+            model=self.llm_name, messages=self.messages
         )
 
         response_content = response.choices[0].message.content
+        self.messages.append({"role": "assistant", "content": response_content})
+
+        return response_content
+
+    def generate_with_watermark(self, prompt: str) -> str | None:
+        self.messages.append(
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        )
+
+        response = self.client.chat.completions.create(
+            model=self.llm_name,
+            messages=self.messages,
+            extra_body={
+                "top_k": 50,
+                "vllm_xargs": self.watermark_config,
+            },
+        )
+
+        response_content = response.choices[0].message.content
+        self.messages.append({"role": "assistant", "content": response_content})
 
         return response_content

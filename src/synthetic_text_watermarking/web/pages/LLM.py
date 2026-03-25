@@ -64,10 +64,13 @@ def main():
     st.subheader("LLM Chat")
 
     question = "Please write 500 words about the fall of Rome."
-    answer = llm_client.prompt(question)
-
     st.markdown(f" * **Question:** {question}")
-    st.markdown(f" * **Answer:** {answer}")
+
+    answer = llm_client.generate(question)
+    st.markdown(f" * **Answer (raw):** {answer}")
+
+    answer = llm_client.generate_with_watermark(question)
+    st.markdown(f" * **Answer (with watermark):** {answer}")
 
 
 # --------------------------------------------------------------------------- #
