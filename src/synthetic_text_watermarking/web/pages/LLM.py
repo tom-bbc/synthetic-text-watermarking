@@ -3,6 +3,7 @@
 # --------------------------------------------------------------------------- #
 
 import streamlit as st
+
 from synthetic_text_watermarking.utils.llm_client import LLMClient
 
 # --------------------------------------------------------------------------- #
@@ -46,7 +47,7 @@ def main():
         "watermarking and responsible use of LLM systems."
     )
 
-    # Chat interface for getting watermarked outputs from LLM
+    # Information about the LLM
     # ---------------------------------------------------------------------------
     st.space()
     st.subheader("LLM Info")
@@ -60,17 +61,63 @@ def main():
     st.markdown(f" * **Selected model:** {llm_client.llm_name}")
     st.markdown(f" * **Model endpoint:** {llm_client.llm_endpoint}")
 
+    # Example LLM responses
+    # ---------------------------------------------------------------------------
+
+    # st.space()
+    # st.subheader("LLM Chat")
+
+    # question = "Please write a short extract about the fall of Rome."
+    # st.markdown(f" * **Question:** {question}")
+
+    # answer_raw = llm_client.generate(question)
+    # st.markdown(f" * **Answer (raw):** {answer_raw}")
+
+    # if answer_raw is not None:
+    #     raw_watermark_likelihood = llm_client.detect_watermark(answer_raw)
+    #     st.markdown(" * **Watermark likelihood:**")
+    #     st.json(raw_watermark_likelihood)
+
+    # answer_watermarked = llm_client.generate_with_watermark(question)
+    # st.markdown(f" * **Answer (with watermark):** {answer_watermarked}")
+
+    # if answer_watermarked is not None:
+    #     wmk_watermark_likelihood = llm_client.detect_watermark(answer_watermarked)
+    #     st.markdown(" * **Watermark likelihood:**")
+    #     st.json(wmk_watermark_likelihood)
+
+    # Chat interface for getting watermarked outputs from LLM
+    # ---------------------------------------------------------------------------
+
     st.space()
     st.subheader("LLM Chat")
 
-    question = "Please write 500 words about the fall of Rome."
-    st.markdown(f" * **Question:** {question}")
+    # Initialize chat history
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-    answer = llm_client.generate(question)
-    st.markdown(f" * **Answer (raw):** {answer}")
+    # Display chat messages from history on app rerun
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-    answer = llm_client.generate_with_watermark(question)
-    st.markdown(f" * **Answer (with watermark):** {answer}")
+    # Accept user input
+    if prompt := st.chat_input("What is up?"):
+        # Display user message in chat message container
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        # Add user message to chat history
+        st.session_state.messages.append({"role": "user", "content": prompt})
+
+        # Display assistant response in chat message container
+        response = llm_client.generate(prompt)
+
+        with st.chat_message("assistant"):
+            st.markdown(response)
+
+        # Add assistant response to chat history
+        st.session_state.messages.append({"role": "assistant", "content": response})
 
 
 # --------------------------------------------------------------------------- #

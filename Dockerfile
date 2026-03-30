@@ -14,6 +14,7 @@ ENV UV_PYTHON_DOWNLOADS=0
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Copy the project into the image
+COPY unified-watermarking/ /wrk/unified-watermarking
 COPY README.md /wrk/
 COPY Makefile /wrk/
 COPY pyproject.toml /wrk/
@@ -22,3 +23,9 @@ COPY src/ /wrk/src
 
 # Sync the project into a new environment
 RUN uv sync --locked
+
+# Install Unified Watermarking Framework submodule into venv
+# RUN . .venv/bin/activate && \
+#     cd unified-watermarking && \
+#     uv pip install vllm --torch-backend=auto && \
+#     uv pip install -e .

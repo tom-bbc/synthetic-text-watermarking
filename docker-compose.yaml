@@ -6,10 +6,7 @@ services:
         ports:
             - "4040:4040"
         environment:
-            - OPENAI_API_BASE_URL=http://model-runner.docker.internal/engines/v1
-            - OPENAI_API_KEY=""
-        volumes:
-            - ./src/synthetic_text_watermarking:/wrk/src/synthetic_text_watermarking:ro
+            - HF_TOKEN=${HF_TOKEN}  # Authenticate HF connection via local env var
         models:
             - llm
 
