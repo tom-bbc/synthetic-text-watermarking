@@ -1,5 +1,5 @@
 [server]
-port = 4040
+port = 1282
 enableStaticServing = true
 
 [[theme.fontFaces]]

@@ -29,18 +29,17 @@ def main():
     # ---------------------------------------------------------------------------
     st.title("Home")
 
-    st.markdown(
-        """
+    st.markdown("""
         Large language models (LLMs) have enabled the generation of high-quality synthetic text, often indistinguishable from human-written content, at a scale that can markedly affect the nature of the information ecosystem.
         Watermarking can help identify synthetic text and limit accidental or deliberate misuse, but has not been adopted in production systems owing to stringent quality, detectability and computational efficiency requirements.
-        """
-    )
+        """)
 
     # Navigate through different watermarking demos
     # ---------------------------------------------------------------------------
     st.space()
     st.subheader("Approaches")
     st.page_link("Home.py", label="Home", icon="🏠")
+    st.page_link("pages/LLM.py", label="LLM", icon="💬")
     st.page_link("pages/C2PA.py", label="C2PA", icon="📰")
     st.page_link("pages/EncypherAI.py", label="EncypherAI", icon="📰")
     st.page_link("pages/SynthID.py", label="SynthID", icon="🍭")

@@ -1,8 +1,12 @@
-# DEFAULTS
+# DEFAULT VALUES
+# ---------------------------------------------------------------------------
+
 MODEL_NAME ?= ai/gemma3-vllm:270M
 
 
-# BUILD & RUN TARGETS
+# BUILD TARGETS
+# ---------------------------------------------------------------------------
+
 .PHONY: build
 build:
 	docker build -t synthetic-text-watermarking --platform linux/arm64 .
@@ -16,6 +20,9 @@ model:
 		$(MODEL_NAME)
 
 
+# RUN TARGETS
+# ---------------------------------------------------------------------------
+
 .PHONY: demo-up
 demo-up:
 	docker compose up --build --detach
@@ -26,12 +33,9 @@ demo-down:
 	docker compose down web
 
 
-.PHONY: web
-web:
-	uv run streamlit run src/synthetic_text_watermarking/web/Home.py
-
-
 # TEST TARGETS
+# ---------------------------------------------------------------------------
+
 .PHONY: test
 test:
 	uv run ruff check --fix src

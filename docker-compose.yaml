@@ -4,11 +4,13 @@ services:
             context: .
         command: make web
         ports:
-            - "4040:4040"
+            - "1282:1282"
         environment:
             - HF_TOKEN=${HF_TOKEN}  # Authenticate HF connection via local env var
         models:
-            - llm
+            llm:
+                endpoint_var: DOCKER_MODEL_RUNNER_ENDPOINT
+                model_var: DOCKER_MODEL_RUNNER_LLM_NAME
 
 models:
     llm:

@@ -4,7 +4,7 @@
 
 import streamlit as st
 
-from synthetic_text_watermarking.utils.llm_client import LLMClient
+from synthetic_text_watermarking.llm.docker_model_runner import get_dmr_llm_client
 
 # --------------------------------------------------------------------------- #
 #                                  WEBAPP                                     #
@@ -52,7 +52,7 @@ def main():
     st.space()
     st.subheader("LLM Info")
 
-    llm_client = LLMClient()
+    llm_client = get_dmr_llm_client()
     available_models = llm_client.models()
 
     st.markdown(" * **Models:**")
